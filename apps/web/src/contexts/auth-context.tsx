@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { getNonce, verifySignature } from '@/lib/auth/helpers';
-import { useUserProfile } from '@/lib/hooks/useUser';
+import { useUser } from '@/lib/hooks/useUser';
 
 type User = {
   id: string;
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   // Fetch user profile when wallet is connected
-  const { data: userProfile, isLoading: isProfileLoading } = useUserProfile(address);
+  const { data: userProfile, isLoading: isProfileLoading } = useUser(address);
 
   useEffect(() => {
     if (userProfile) {

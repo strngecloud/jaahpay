@@ -319,7 +319,7 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
           tx.metadata.fromAddress?.toLowerCase().includes(search) || false;
         const matchesTo =
           tx.metadata.toAddress?.toLowerCase().includes(search) || false;
-        const matchesProvider = tx.provider.toLowerCase().includes(search);
+        const matchesProvider = tx.provider ?? "Unknown".toLowerCase().includes(search);
 
         if (!(matchesId || matchesFrom || matchesTo || matchesProvider)) {
           return false;

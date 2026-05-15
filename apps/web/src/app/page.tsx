@@ -1,1066 +1,604 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { useState } from "react";
 import {
   Zap,
-  Globe,
+  Shield,
+  Bot,
+  ChevronDown,
+  ArrowRight,
+  RefreshCw,
   TrendingUp,
   Lock,
-  Zap as Lightning,
-  ArrowRight,
-  CheckCircle2,
-  Smartphone,
-  BarChart3,
-  Code,
-  Users,
-  ChevronDown,
+  Star,
+  ExternalLink,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { SwapInterface } from "@/components/swap/swap-interface";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
-import type { Variants } from "framer-motion";
-import Image from "next/image";
-import { GradientButton } from "@/components/ui/button";
-import { StatCard } from "@/components/ui/stat-card";
-import { FeatureCard } from "@/components/ui/feature-card";
-import { GlassCard } from "@/components/ui/glass-card";
-import { Badge } from "@/components/ui/badge";
-import { TransactionInterface } from "@/components/main-app/core/transaction-interface";
+// ─── Variants ─────────────────────────────────────────────────────────────────
 
-const container: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const item: Variants = {
-  hidden: { opacity: 0, y: 20 },
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
   show: {
     opacity: 1,
     y: 0,
-    transition: {
-      type: "spring" as const,
-      stiffness: 300,
-      damping: 30,
-    },
+    transition: { type: "spring" as const, stiffness: 200, damping: 28 },
   },
 };
 
-const fadeInUp: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring" as const,
-      duration: 0.8,
-    },
-  },
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } },
 };
 
-const providers = [
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const STATS = [
+  { value: "< 5s", label: "Settlement Time" },
+  { value: "0.3%", label: "Platform Fee" },
+  { value: "Oracle", label: "Pricing Source" },
+  { value: "ERC-8004", label: "AI Standard" },
+];
+
+const FEATURES = [
   {
-    name: "Yellow Card",
-    icon: "/images/yellowcard1.png",
-    description: "20+ African countries",
-    color: "from-brand-blue to-blue-700",
+    icon: <RefreshCw className="w-5 h-5 text-brand-blue" />,
+    title: "Mento Oracle Pricing",
+    desc: "Swap USDC and USDT at oracle-sourced rates — no AMM slippage, no price manipulation.",
+    gradient: "from-brand-blue/20 to-blue-600/5",
+    border: "border-brand-blue/15",
   },
   {
-    name: "Cashramp",
-    icon: "/images/cashramp.jpeg",
-    description: "Fast & reliable",
-    color: "from-brand-green to-emerald-700",
+    icon: <Bot className="w-5 h-5 text-purple-400" />,
+    title: "ERC-8004 AI Agent",
+    desc: "An on-chain registered AI agent monitors conditions and recommends optimal slippage in real time.",
+    gradient: "from-purple-500/20 to-violet-600/5",
+    border: "border-purple-500/15",
   },
   {
-    name: "Bitmama",
-    icon: "/images/bitmama.png",
-    description: "Multi-currency support",
-    color: "from-purple-500 to-pink-500",
+    icon: <Zap className="w-5 h-5 text-yellow-400" />,
+    title: "Fee Abstraction",
+    desc: "Pay gas in USDC or USDT. No CELO needed. Celo's native fee abstraction handles the rest.",
+    gradient: "from-yellow-500/20 to-amber-600/5",
+    border: "border-yellow-500/15",
+  },
+  {
+    icon: <Shield className="w-5 h-5 text-brand-green" />,
+    title: "Non-Custodial",
+    desc: "Your keys, your tokens. Swaps execute directly from your wallet — we never hold your funds.",
+    gradient: "from-brand-green/20 to-emerald-600/5",
+    border: "border-brand-green/15",
+  },
+  {
+    icon: <TrendingUp className="w-5 h-5 text-cyan-400" />,
+    title: "Circuit Breaker Protection",
+    desc: "Mento's circuit breaker auto-pauses trading during extreme volatility — your swap is always safe.",
+    gradient: "from-cyan-500/20 to-blue-600/5",
+    border: "border-cyan-500/15",
+  },
+  {
+    icon: <Lock className="w-5 h-5 text-rose-400" />,
+    title: "Transparent Fees",
+    desc: "0.3% platform fee shown before every swap. No hidden charges. No surprise deductions.",
+    gradient: "from-rose-500/20 to-pink-600/5",
+    border: "border-rose-500/15",
   },
 ];
 
-const features = [
+const STEPS = [
   {
-    title: "Multi-Provider Ramp",
-    description:
-      "Seamless integration with Yellow Card, Cashramp, and Bitmama for optimal rates and availability.",
-    icon: Globe,
-    color: "from-brand-blue to-cyan-500",
-  },
-  {
-    title: "Instant Conversions",
-    description:
-      "Convert between fiat and crypto in minutes with real-time exchange rates and transparent fees.",
-    icon: Lightning,
-    color: "from-blue-400 to-brand-blue",
-  },
-  {
-    title: "Bank-to-Wallet",
-    description:
-      "Direct on-ramps from bank transfers and mobile money. Off-ramps to any Nigerian bank account.",
-    icon: Smartphone,
-    color: "from-brand-green to-emerald-500",
-  },
-  {
-    title: "Secure & Audited",
-    description:
-      "Production-grade smart contracts with comprehensive security audits and 99.5% uptime guarantee.",
-    icon: Lock,
-    color: "from-purple-500 to-pink-500",
-  },
-  {
-    title: "Low Fees",
-    description:
-      "Competitive platform fees starting at just 1.5% with no hidden charges or surprise costs.",
-    icon: TrendingUp,
-    color: "from-brand-blue to-indigo-500",
-  },
-  {
-    title: "Real-time Tracking",
-    description:
-      "Monitor every transaction in real-time with detailed status updates and transaction history.",
-    icon: BarChart3,
-    color: "from-brand-green to-teal-500",
-  },
-];
-
-const steps = [
-  {
-    number: "1",
+    num: "01",
     title: "Connect Wallet",
-    description: "Link your Celo wallet securely using Composer Kit",
-    icon: Users,
+    desc: "Link any Celo-compatible wallet — Metamask, Valora, or any WalletConnect app.",
   },
   {
-    number: "2",
-    title: "Select Provider",
-    description: "Choose the best provider based on rate, speed, and fees",
-    icon: Globe,
+    num: "02",
+    title: "Enter Amount",
+    desc: "Type how much USDC or USDT you want to swap. A live oracle quote appears instantly.",
   },
   {
-    number: "3",
-    title: "Enter Details",
-    description:
-      "Specify amount and choose between bank transfer or mobile money",
-    icon: Smartphone,
+    num: "03",
+    title: "AI Reviews",
+    desc: "The ERC-8004 agent assesses market conditions and recommends the safest slippage setting.",
   },
   {
-    number: "4",
-    title: "Complete Transaction",
-    description: "Confirm details and receive crypto instantly or send to bank",
-    icon: CheckCircle2,
+    num: "04",
+    title: "Confirm & Swap",
+    desc: "Review the fee breakdown and confirm. Your swap settles on Celo in under 5 seconds.",
   },
 ];
 
-const stats = [
-  { value: "20+", label: "African Countries" },
-  { value: "3", label: "Major Providers" },
-  { value: "< 5min", label: "Average Settlement" },
-  { value: "99.5%", label: "Uptime" },
+const FAQS = [
+  {
+    q: "What tokens can I swap?",
+    a: "Jahpay supports USDC ↔ USDT on Celo Mainnet. Both are native, audited stablecoins — not bridged versions.",
+  },
+  {
+    q: "How does the AI agent work?",
+    a: "The ERC-8004 agent is registered on-chain as an ERC-721 NFT on Celo. It monitors Mento oracle rates and recommends optimal slippage before each swap. After completion, it records feedback on-chain to build its reputation.",
+  },
+  {
+    q: "What is the platform fee?",
+    a: "0.3% on every swap, deducted from the output amount. It is always shown transparently before you confirm.",
+  },
+  {
+    q: "Do I need CELO for gas?",
+    a: "No. Celo's fee abstraction lets you pay gas in USDC or USDT directly.",
+  },
+  {
+    q: "Is this safe?",
+    a: "Swaps are executed through Mento Protocol v3 — a battle-tested, audited DEX native to Celo. Jahpay never holds your funds.",
+  },
 ];
 
-const faqs = [
-  {
-    question: "What is the minimum transaction amount?",
-    answer:
-      "Minimum amounts vary by country and provider. For Nigeria, it's typically ₦1,000 ($1 USD). Maximum limits depend on your KYC verification level.",
-  },
-  {
-    question: "How long does a transaction take?",
-    answer:
-      "Most transactions complete within 2-5 minutes depending on the provider and payment method. Bank transfers may take slightly longer (5-30 minutes).",
-  },
-  {
-    question: "Which networks are supported?",
-    answer:
-      "We currently support Celo Mainnet and Alfajores Testnet. Multi-chain support for Ethereum, Polygon, and BSC is coming soon.",
-  },
-  {
-    question: "How are my funds secured?",
-    answer:
-      "All smart contracts have undergone professional audits. We use ReentrancyGuard, multi-sig approvals, and 24/7 monitoring. Your private keys never leave your wallet.",
-  },
-  {
-    question: "Do I need KYC verification?",
-    answer:
-      "Basic transactions don't require KYC. However, higher limits (>$100) require verification through our partner providers.",
-  },
-  {
-    question: "What are the fees?",
-    answer:
-      "Platform fees start at 1.5%. Provider fees vary (1.5%-2.5%). No hidden charges. All fees are shown before you confirm.",
-  },
-];
+// ─── FAQ Item ─────────────────────────────────────────────────────────────────
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      onClick={() => setOpen((v) => !v)}
+      className="w-full text-left rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-all p-5 group"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm font-semibold text-white">{q}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-white/40 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </div>
+      {open && (
+        <motion.p
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="text-sm text-white/50 mt-3 leading-relaxed"
+        >
+          {a}
+        </motion.p>
+      )}
+    </button>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState(0);
-  const [expandedFaq, setExpandedFaq] = useState(0);
-
   return (
-    <main className="flex-1 overflow-x-hidden jahpay-grid">
-      {/* Unified Jahpay Background */}
-      <div className="fixed inset-0 -z-10 jahpay-bg">
-        <div className="absolute inset-0 jahpay-grid opacity-30" />
-        {/* Subtle animated glow following the brand colors */}
-        <motion.div
-          animate={{
-            opacity: [0.3, 0.5, 0.3],
-            scale: [1, 1.1, 1],
+    <main className="flex-1 overflow-x-hidden">
+      {/* ── Background ──────────────────────────────────────────────── */}
+      <div className="fixed inset-0 -z-10 bg-[#060b14]">
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
           }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(59,130,246,0.15),transparent_70%)]"
+        />
+        <motion.div
+          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(59,130,246,0.12),transparent_70%)]"
+        />
+        <motion.div
+          animate={{ opacity: [0.1, 0.25, 0.1] }}
+          transition={{
+            duration: 16,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 4,
+          }}
+          className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgba(139,92,246,0.1),transparent_70%)]"
         />
       </div>
 
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center">
-        {/* Section Overlay for Blending */}
-        <div className="absolute inset-0 -z-10 section-overlay-hero" />
-
-        {/* Animated floating elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 -left-1/2 w-[800px] h-[800px] rounded-full bg-gradient-to-br from-blue-500/20 to-transparent blur-3xl" />
-          <div className="absolute -bottom-1/4 -right-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-tl from-purple-500/20 to-transparent blur-3xl" />
-        </div>
-
-        <div className="container px-4 mx-auto max-w-7xl relative z-10">
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={container}
-            className="text-center max-w-6xl mx-auto pt-24 md:pt-32"
-          >
-            {/* Main Heading */}
-            <motion.div variants={item} className="relative">
-              <motion.h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6 leading-tight">
-                <div className="flex items-center justify-center">
-                  <motion.span
-                    className="inline-block relative"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                  >
-                    <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 via-brand-blue to-cyan-400 whitespace-nowrap">
-                      Fiat
-                    </span>
-                    <span className="absolute -bottom-1 left-0 right-0 h-2 bg-gradient-to-r from-brand-blue/30 to-cyan-500/30 blur-md" />
-                  </motion.span>
-
-                  <motion.div
-                    className="relative h-12 w-12 md:h-14 md:w-14 mx-2 md:mx-3 flex items-center justify-center"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      x: [0, 5, -5, 0],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      repeatType: "loop",
-                    }}
-                  >
-                    {/* Background glow */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-blue/20 to-brand-green/20 blur-md" />
-
-                    {/* Main circle */}
-                    <div
-                      className="relative z-10 h-12 w-12 md:h-14 md:w-14 rounded-full 
-                             bg-gradient-to-br from-brand-blue/30 to-brand-green/30 
-                             border border-brand-blue/30 
-                             flex items-center justify-center 
-                             backdrop-blur-sm"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-6 w-6 md:h-8 md:w-8 text-brand-blue"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        {/* Right arrow */}
-                        <motion.path
-                          d="M4 12h16M14 6l6 6-6 6"
-                          initial={{ pathLength: 0, opacity: 0 }}
-                          animate={{
-                            pathLength: 1,
-                            opacity: 1,
-                            x: [-2, 2, -2],
-                          }}
-                          transition={{
-                            duration: 3,
-                            repeat: Infinity,
-                            repeatType: "loop",
-                          }}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-
-                        {/* Left arrow */}
-                        <motion.path
-                          d="M10 12l-6 6 6 6"
-                          initial={{ pathLength: 0, opacity: 0 }}
-                          animate={{
-                            pathLength: 1,
-                            opacity: 1,
-                            x: [2, -2, 2],
-                          }}
-                          transition={{
-                            duration: 3,
-                            delay: 0.5,
-                            repeat: Infinity,
-                            repeatType: "loop",
-                          }}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
-                  </motion.div>
-
-                  <motion.span
-                    className="inline-block relative"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                  >
-                    <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-emerald-200 via-brand-green to-teal-400 whitespace-nowrap">
-                      Crypto
-                    </span>
-                    <span className="absolute -bottom-1 left-0 right-0 h-2 bg-gradient-to-r from-brand-green/30 to-emerald-500/30 blur-md" />
-                  </motion.span>
-                </div>
-
-                <motion.div
-                  className="mt-6 md:mt-8"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.6 }}
-                >
-                  <span className="text-3xl md:text-5xl lg:text-6xl xl:text-[4.5rem] font-bold tracking-normal">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">
-                      Made Seamless
-                    </span>
-                  </span>
-                </motion.div>
-              </motion.h1>
-            </motion.div>
-
-            {/* Subtitle */}
-            <motion.p
-              variants={item}
-              className="text-lg md:text-xl text-slate-300/90 mb-10 max-w-3xl mx-auto leading-relaxed font-medium"
+      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      <section className="relative min-h-screen flex items-center pt-24 pb-20">
+        <div className="container px-4 mx-auto max-w-7xl">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left copy */}
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              animate="show"
+              className="space-y-8"
             >
-              <motion.span
-                className="inline-block"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-              >
-                Convert between your local currency and Celo in minutes with the
-                best rates across 20+ African countries.
-                <span className="text-white font-semibold flex items-center justify-center mt-2 group">
-                  <Globe className="w-5 h-5 mr-2 text-brand-blue group-hover:text-brand-green animate-pulse" />
-                  Multi-provider ramp aggregator for everyone.
+              {/* Badge */}
+              <motion.div variants={fadeUp}>
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-500/25 bg-purple-500/8 text-xs font-semibold text-purple-400 uppercase tracking-wider">
+                  <Bot className="w-3.5 h-3.5" />
+                  ERC-8004 AI Agent · Celo Mainnet
                 </span>
-              </motion.span>
-            </motion.p>
+              </motion.div>
 
-            {/* CTA Buttons */}
-            <motion.div
-              variants={item}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 1 }}
-            >
-              <Link href="/app">
-                <GradientButton
-                  size="lg"
-                  className="px-8 py-6 text-base font-semibold"
-                >
-                  Launch App
-                  {/* <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" /> */}
-                </GradientButton>
-              </Link>
+              {/* Headline */}
+              <motion.div variants={fadeUp}>
+                <h1 className="text-5xl md:text-6xl xl:text-7xl font-bold leading-[1.05] tracking-tight">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
+                    Swap USDC
+                  </span>
+                  <br />
+                  <span className="relative inline-block">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-brand-blue via-cyan-400 to-brand-green">
+                      ↔ USDT
+                    </span>
+                    <motion.span
+                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-blue to-brand-green"
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ delay: 0.8, duration: 0.6 }}
+                    />
+                  </span>
+                  <br />
+                  <span className="text-white/80 text-4xl md:text-5xl xl:text-6xl font-semibold">
+                    Instantly on Celo.
+                  </span>
+                </h1>
+              </motion.div>
 
-              <Button
-                variant="outline"
-                size="lg"
-                className="px-8 py-6 text-base font-medium border-slate-700 bg-slate-900/50 hover:bg-slate-800/50 text-white hover:text-white backdrop-blur-sm transition-all"
+              {/* Sub */}
+              <motion.p
+                variants={fadeUp}
+                className="text-lg text-slate-400 leading-relaxed max-w-xl"
               >
-                Learn More
-              </Button>
+                Oracle-priced swaps with a 0.3% fee. An ERC-8004 AI agent
+                analyses market conditions and recommends optimal settings
+                before every trade. Powered by Mento Protocol v3.
+              </motion.p>
+
+              {/* CTAs */}
+              <motion.div
+                variants={fadeUp}
+                className="flex flex-col sm:flex-row gap-4"
+              >
+                <a
+                  href="#swap"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-green text-white font-bold text-base hover:opacity-90 hover:-translate-y-0.5 transition-all shadow-lg shadow-brand-blue/20"
+                >
+                  Start Swapping <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/[0.1] text-white/70 hover:text-white hover:border-white/20 font-medium text-base transition-all"
+                >
+                  ERC-8004 Docs <ExternalLink className="w-4 h-4" />
+                </a>
+              </motion.div>
+
+              {/* Stats */}
+              <motion.div
+                variants={fadeUp}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/[0.05]"
+              >
+                {STATS.map(({ value, label }) => (
+                  <div key={label} className="text-center">
+                    <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-green to-cyan-400">
+                      {value}
+                    </div>
+                    <div className="text-xs text-white/35 mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </motion.div>
             </motion.div>
 
-            {/* Stats Highlight */}
+            {/* Right — live swap widget */}
             <motion.div
-              variants={item}
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-slate-700/50"
+              id="swap"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, type: "spring", stiffness: 150 }}
+              className="relative"
             >
-              {stats.map((stat, idx) => (
-                <StatCard
-                  key={idx}
-                  value={stat.value}
-                  label={stat.label}
-                  delay={1.2 + idx * 0.1}
-                />
-              ))}
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/15 to-purple-500/15 rounded-3xl blur-3xl -z-10" />
+              <SwapInterface />
             </motion.div>
-          </motion.div>
-
-          {/* Hero Image Placeholder */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
-            className="mt-20 relative"
-          >
-            <div className="relative group">
-              <TransactionInterface />
-              {/* Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/20 to-brand-green/20 rounded-2xl blur-3xl -z-10 group-hover:blur-2xl transition-all duration-500" />
-            </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10 section-overlay-features" />
-
+      {/* ── Features ─────────────────────────────────────────────────── */}
+      <section className="relative py-24 lg:py-32">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,rgba(16,185,129,0.05),transparent_70%)]" />
         <div className="container px-4 mx-auto max-w-7xl relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="mb-4"
-            >
-              <Badge
-                variant="outline"
-                className="px-4 py-1.5 border-brand-blue/30 bg-brand-blue/5 text-brand-blue rounded-full backdrop-blur-sm uppercase tracking-wider font-semibold"
-              >
-                Features
-              </Badge>
-            </motion.div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-200">
-              Powerful Features
+            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-blue/25 bg-brand-blue/8 text-xs font-semibold text-brand-blue uppercase tracking-wider mb-4">
+              Why Jahpay
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-white">
+              Built different.
             </h2>
-            <p className="text-lg text-slate-300/90 max-w-2xl mx-auto">
-              Everything you need for seamless fiat-to-crypto conversions
+            <p className="text-lg text-slate-400 mt-4 max-w-xl mx-auto">
+              Every design decision prioritises security, transparency, and
+              intelligence.
             </p>
           </motion.div>
 
           <motion.div
-            variants={container}
+            variants={stagger}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            viewport={{ once: true, margin: "-80px" }}
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
           >
-            {features.map((feature, idx) => {
-              const Icon = feature.icon;
-
-              return (
-                <FeatureCard
-                  key={idx}
-                  icon={<Icon className="h-6 w-6 text-white" />}
-                  title={feature.title}
-                  description={feature.description}
-                  gradient={feature.color}
-                  className="h-full"
-                />
-              );
-            })}
-          </motion.div>
-
-          {/* Stats Section */}
-          <motion.div
-            className="mt-20 pt-12 border-t border-slate-800/50"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {stats.map((stat, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-brand-green to-emerald-400">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-slate-400 font-medium">
-                    {stat.label}
-                  </div>
+            {FEATURES.map(({ icon, title, desc, gradient, border }) => (
+              <motion.div
+                key={title}
+                variants={fadeUp}
+                whileHover={{ y: -4 }}
+                className={`group relative rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-6 transition-all duration-300 hover:shadow-xl hover:shadow-black/30`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center mb-4">
+                  {icon}
                 </div>
-              ))}
-            </div>
+                <h3 className="text-base font-bold text-white mb-2">{title}</h3>
+                <p className="text-sm text-white/50 leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10 section-overlay-howit" />
-
-        <div className="container px-4 mx-auto max-w-7xl relative z-10">
+      {/* ── How It Works ─────────────────────────────────────────────── */}
+      <section className="relative py-24 lg:py-32">
+        <div className="container px-4 mx-auto max-w-5xl relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="mb-4"
-            >
-              <Badge
-                variant="brand-blue"
-                className="px-4 py-1.5 rounded-full uppercase tracking-wider font-semibold"
-              >
-                Process
-              </Badge>
-            </motion.div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-200">
-              How It Works
+            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-green/25 bg-brand-green/8 text-xs font-semibold text-brand-green uppercase tracking-wider mb-4">
+              Process
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-white">
+              Swap in 4 steps.
             </h2>
-            <p className="text-lg text-slate-300/90 max-w-2xl mx-auto">
-              Complete your first fiat-to-crypto swap in 4 simple steps
-            </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-4 gap-8 relative">
-            {/* Animated connection line */}
-            <motion.div
-              className="hidden md:block absolute top-16 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-blue/20 to-transparent"
-              initial={{ width: 0 }}
-              whileInView={{ width: "100%" }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.5, ease: "easeInOut" }}
-            >
-              <div className="absolute h-full w-1/2 bg-gradient-to-r from-brand-blue to-brand-green animate-pulse" />
-            </motion.div>
+          <div className="relative">
+            {/* Vertical line */}
+            <div className="absolute left-[22px] md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-brand-blue/40 via-brand-green/30 to-transparent -translate-x-px hidden md:block" />
 
-            {steps.map((step, idx) => {
-              const Icon = step.icon;
-              const colors = [
-                "from-brand-blue to-blue-500",
-                "from-blue-500 to-brand-green",
-                "from-brand-green to-emerald-500",
-                "from-emerald-500 to-cyan-500",
-              ][idx % 4];
-
-              return (
+            <div className="space-y-10">
+              {STEPS.map(({ num, title, desc }, idx) => (
                 <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: idx * 0.1,
-                    duration: 0.5,
-                    type: "spring",
-                    stiffness: 100,
-                  }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  className="relative group"
+                  key={num}
+                  initial={{ opacity: 0, x: idx % 2 === 0 ? -24 : 24 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className={`flex items-start gap-6 md:gap-10 ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
                 >
-                  {/* Step number with gradient ring */}
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#060b14] border-2 border-white/[0.08] flex items-center justify-center z-10 group-hover:border-brand-blue/30 transition-colors">
-                    <span className="relative z-10 text-lg font-bold text-white">
-                      {idx + 1}
-                    </span>
-                  </div>
-
-                  {/* Card */}
-                  <div className="relative h-full bg-[#0d111c]/80 border border-white/[0.06] rounded-2xl p-6 pt-10 backdrop-blur-lg transition-all duration-300 group-hover:border-brand-blue/20 group-hover:shadow-2xl hover:shadow-brand-blue/5">
-                    {/* Gradient overlay */}
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${colors} rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity duration-500`}
-                    ></div>
-
-                    <div className="relative z-10">
-                      <div
-                        className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${colors} mb-6 transform transition-transform duration-300 group-hover:scale-110`}
-                      >
-                        <Icon className="h-6 w-6 text-white" />
-                      </div>
-
-                      <div className="text-left">
-                        <h3 className="text-xl font-bold mb-2 text-white">
-                          {step.title}
-                        </h3>
-                        <p className="text-slate-300/90 text-sm leading-relaxed">
-                          {step.description}
+                  <div className="flex-1 md:text-right">
+                    {idx % 2 !== 0 && (
+                      <div className="hidden md:block">
+                        <div className="text-sm font-bold text-white mb-1">
+                          {title}
+                        </div>
+                        <p className="text-sm text-white/45 leading-relaxed">
+                          {desc}
                         </p>
                       </div>
-                    </div>
+                    )}
+                    {idx % 2 === 0 && <div />}
+                  </div>
+
+                  {/* Step badge */}
+                  <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-brand-blue to-brand-green flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-brand-blue/25 z-10">
+                    {num}
+                  </div>
+
+                  <div className="flex-1">
+                    {idx % 2 === 0 && (
+                      <div>
+                        <div className="text-sm font-bold text-white mb-1">
+                          {title}
+                        </div>
+                        <p className="text-sm text-white/45 leading-relaxed">
+                          {desc}
+                        </p>
+                      </div>
+                    )}
+                    {idx % 2 !== 0 && (
+                      <div className="md:hidden">
+                        <div className="text-sm font-bold text-white mb-1">
+                          {title}
+                        </div>
+                        <p className="text-sm text-white/45 leading-relaxed">
+                          {desc}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
-              );
-            })}
-          </div>
-
-          {/* CTA Section */}
-          <motion.div
-            className="mt-20 text-center"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-          >
-            <h3 className="text-2xl md:text-3xl font-bold mb-6 text-white">
-              Ready to get started?
-            </h3>
-            <p className="text-lg text-slate-300/90 mb-8 max-w-2xl mx-auto">
-              Join thousands of users enjoying seamless fiat-to-crypto
-              conversions today.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                className="relative overflow-hidden group px-8 py-6 text-base font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-lg hover:shadow-xl hover:shadow-blue-500/30 transition-all transform hover:-translate-y-0.5"
-              >
-                <span className="relative z-10 flex items-center">
-                  Get Started
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-                <span className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                className="px-8 py-6 text-base font-medium border-slate-700 bg-slate-900/50 hover:bg-slate-800/50 text-white hover:text-white backdrop-blur-sm transition-all"
-              >
-                Contact Sales
-              </Button>
+              ))}
             </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* User Testimonial Section */}
-      <section className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10 section-overlay-howit opacity-50" />
-        <div className="container px-4 mx-auto max-w-7xl relative z-10">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -40 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
-              <div className="relative">
-                <Image
-                  src="/images/banner.png"
-                  alt="Smiling user with Jahpay"
-                  className="rounded-2xl shadow-2xl relative z-10 border border-white/[0.06]"
-                  width={600}
-                  height={400}
-                />
-                <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 to-brand-green/20 blur-3xl -z-10 rounded-full mix-blend-screen opacity-50" />
-              </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">
-                From Local Currency to Crypto, All in Your Hands
-              </h2>
-              <p className="text-lg text-slate-300/90 mb-8 leading-relaxed">
-                Jahpay puts the power of seamless digital finance right in your
-                pocket. With a user-friendly interface, you can effortlessly
-                navigate the world of crypto, making transactions as simple as
-                sending a text message. Experience the joy of financial freedom
-                with a platform designed for you.
-              </p>
-              <Button
-                size="lg"
-                className="relative overflow-hidden group px-8 py-6 text-base font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl hover:shadow-purple-500/30 transition-all transform hover:-translate-y-0.5"
-              >
-                <span className="relative z-10 flex items-center">
-                  Explore Features
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </Button>
-            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Providers Section */}
-      <section className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10 section-overlay-providers" />
-        <div className="container px-4 mx-auto max-w-7xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+      {/* ── AI Agent Spotlight ────────────────────────────────────────── */}
+      <section className="relative py-24 lg:py-32">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(139,92,246,0.08),transparent_70%)]" />
+        <div className="container px-4 mx-auto max-w-5xl relative z-10">
+          <div className="grid md:grid-cols-2 gap-14 items-center">
+            {/* Agent card mockup */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="mb-4"
+              className="relative"
             >
-              <Badge
-                variant="brand-green"
-                className="px-4 py-1.5 rounded-full uppercase tracking-wider font-semibold"
-              >
-                Partners
-              </Badge>
-            </motion.div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-              Trusted Providers
-            </h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Multi-provider aggregator ensures best rates and maximum
-              availability
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-            className="grid md:grid-cols-3 gap-8"
-          >
-            {providers.map((provider, idx) => {
-              const colors = [
-                "from-purple-500 to-blue-500",
-                "from-blue-500 to-cyan-500",
-                "from-cyan-500 to-emerald-500",
-              ][idx % 3];
-
-              return (
-                <motion.div
-                  key={idx}
-                  variants={item}
-                  className="group relative h-full"
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                >
-                  <div className="relative h-full border border-white/[0.06] bg-[#0d111c]/60 rounded-2xl p-8 backdrop-blur-lg overflow-hidden transition-all duration-300 hover:border-white/[0.1] hover:shadow-2xl">
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${colors} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`}
-                    />
-                    <div
-                      className={`absolute -inset-1 bg-gradient-to-br ${colors} rounded-2xl opacity-0 group-hover:opacity-10 blur-2xl transition-opacity duration-500`}
-                    ></div>
-
-                    <div className="relative z-10 text-center h-full flex flex-col items-center">
-                      <div className="relative w-20 h-20 mb-6 transform transition-transform duration-300 group-hover:scale-110">
-                        <Image
-                          src={provider.icon}
-                          alt={provider.name}
-                          width={80}
-                          height={80}
-                          className="object-contain w-full h-full rounded-lg"
-                          priority
-                        />
-                      </div>
-
-                      <h3 className="text-xl font-bold mb-3 text-white">
-                        {provider.name}
-                      </h3>
-                      <p className="text-slate-300/90 mb-6 flex-grow">
-                        {provider.description}
-                      </p>
-
-                      <div className="w-8 h-0.5 bg-gradient-to-r from-purple-500/20 via-blue-500/50 to-cyan-500/20 my-4"></div>
-
-                      <div className="text-sm font-medium text-brand-blue group-hover:text-brand-green transition-colors flex items-center">
-                        <span>Learn more</span>
-                        <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                      </div>
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-brand-blue/10 rounded-3xl blur-2xl -z-10" />
+              <div className="rounded-3xl border border-purple-500/20 bg-[#0a0f1e]/90 backdrop-blur-md p-6 space-y-5">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/40 to-blue-500/40 border border-purple-500/30 flex items-center justify-center">
+                      <Bot className="w-5 h-5 text-purple-300" />
+                    </div>
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-green border-2 border-[#0a0f1e]" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">
+                      Jahpay Swap Agent
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-white/40">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
+                      Optimal conditions · ERC-8004
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Learn More / Choose Jahpay Section */}
-      <section
-        id="learn-more-section"
-        className="relative py-20 lg:py-32"
-      >
-        <div className="absolute inset-0 -z-10 section-overlay-features opacity-60" />
-        <div className="container px-4 mx-auto max-w-7xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <motion.span
-              className="inline-block px-4 py-2 mb-4 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-cyan-500/10 text-blue-400 rounded-full border border-blue-500/30 backdrop-blur-sm"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              viewport={{ once: true }}
-            >
-              Learn More
-            </motion.span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-              Why Choose Jahpay?
-            </h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Discover what makes jahpay the best choice for fiat-to-crypto
-              conversions
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-            className="grid md:grid-cols-2 gap-8 mb-12"
-          >
-            {[
-              {
-                title: "Best Rates Guaranteed",
-                description:
-                  "Our multi-provider aggregator compares rates to ensure you always get the best deal. No hidden markups.",
-                icon: TrendingUp,
-                colors: "from-brand-green to-emerald-500",
-              },
-              {
-                title: "Lightning Fast",
-                description:
-                  "Most transactions complete in under 5 minutes. Real-time rate updates and instant confirmations keep you in control.",
-                icon: Zap,
-                colors: "from-brand-blue to-blue-500",
-              },
-              {
-                title: "Secure & Audited",
-                description:
-                  "All smart contracts have undergone professional security audits. Your funds are protected with multi-sig wallets and 24/7 monitoring.",
-                icon: Lock,
-                colors: "from-blue-500 to-cyan-500",
-              },
-              {
-                title: "20+ African Countries",
-                description:
-                  "Support for NGN, GHS, KES, ZAR, and more. Send and receive from any African country with local payment methods.",
-                icon: Globe,
-                colors: "from-teal-500 to-emerald-500",
-              },
-            ].map((learnItem, idx) => {
-              const Icon = learnItem.icon;
-              return (
-                <motion.div
-                  key={idx}
-                  variants={item}
-                  className="group relative"
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                >
-                  <div className="relative h-full bg-[#0d111c]/60 border border-white/[0.06] rounded-2xl p-8 backdrop-blur-lg overflow-hidden transition-all duration-300 hover:border-brand-blue/30 hover:shadow-xl hover:shadow-brand-blue/5">
-                    <div className="relative">
-                      <motion.div
-                        className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${learnItem.colors} mb-6 transform transition-transform duration-300 group-hover:scale-110`}
-                        initial={{ scale: 1 }}
-                        whileHover={{ scale: 1.1 }}
-                      >
-                        <Icon className="h-6 w-6 text-black" />
-                      </motion.div>
-
-                      <h3 className="text-xl font-bold mb-3 text-white">
-                        {learnItem.title}
-                      </h3>
-                      <p className="text-slate-400 leading-relaxed">
-                        {learnItem.description}
-                      </p>
-                    </div>
+                  <div className="ml-auto flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-3 h-3 ${s <= 4 ? "fill-yellow-400 text-yellow-400" : "text-white/20"}`}
+                      />
+                    ))}
                   </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </section>
+                </div>
 
-      {/* FAQ Section */}
-      <section className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10 section-overlay-faq" />
-        <div className="container px-4 mx-auto max-w-4xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <motion.span
-              className="inline-block px-4 py-2 mb-4 text-sm font-medium bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-300 rounded-full border border-indigo-500/30 backdrop-blur-sm"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              viewport={{ once: true }}
-            >
-              Support
-            </motion.span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">
-              Frequently Asked
-            </h2>
-            <p className="text-lg text-slate-300/90 max-w-2xl mx-auto">
-              Everything you need to know about using our platform
-            </p>
-          </motion.div>
+                <div className="text-sm text-white/55 leading-relaxed p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                  &quot;Oracle rates are stable. Ultra-low slippage (0.1%) is
+                  safe for this amount.&quot;
+                </div>
 
-          <motion.div
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-50px" }}
-            className="space-y-4"
-          >
-            {faqs.map((faq, idx) => {
-              const isOpen = expandedFaq === idx;
-              return (
-                <motion.div key={idx} variants={item} className="group">
-                  <motion.button
-                    onClick={() => setExpandedFaq(isOpen ? -1 : idx)}
-                    className={`w-full text-left bg-[#0d111c]/60 border ${
-                      isOpen
-                        ? "border-brand-blue/30"
-                        : "border-white/[0.06] hover:border-white/[0.12]"
-                    } rounded-xl p-6 transition-all duration-300 backdrop-blur-lg`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <h3 className="text-lg font-semibold text-white pr-8">
-                        {faq.question}
-                      </h3>
-                      <motion.div
-                        animate={{ rotate: isOpen ? 180 : 0 }}
-                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                          isOpen
-                            ? "bg-brand-blue/10"
-                            : "bg-white/[0.04] group-hover:bg-white/[0.08]"
-                        } transition-colors`}
-                      >
-                        <ChevronDown
-                          className={`h-4 w-4 ${
-                            isOpen ? "text-brand-blue" : "text-slate-400"
-                          } transition-colors`}
-                        />
-                      </motion.div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Slippage", value: "0.1%" },
+                    { label: "Confidence", value: "97%" },
+                    { label: "Protocol", value: "Mento v3" },
+                  ].map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]"
+                    >
+                      <div className="text-xs text-white/35 mb-1">{label}</div>
+                      <div className="text-sm font-bold text-white">
+                        {value}
+                      </div>
                     </div>
+                  ))}
+                </div>
 
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        height: isOpen ? "auto" : 0,
-                        opacity: isOpen ? 1 : 0,
-                        marginTop: isOpen ? "1rem" : 0,
-                        paddingTop: isOpen ? "1rem" : 0,
-                      }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden border-t border-slate-700/30"
-                    >
-                      <p className="text-slate-300/90 leading-relaxed">
-                        {faq.answer}
-                      </p>
-                    </motion.div>
-                  </motion.button>
-                </motion.div>
-              );
-            })}
-
-            {/* Support CTA */}
-            <motion.div
-              className="mt-12 text-center"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              viewport={{ once: true }}
-            >
-              <p className="text-slate-300/90 mb-6">
-                Still have questions? Our support team is here to help.
-              </p>
-              <Button
-                variant="outline"
-                className="px-8 py-6 text-base font-medium border-slate-700 bg-slate-900/50 hover:bg-slate-800/50 text-white hover:text-white backdrop-blur-sm transition-all group"
-              >
-                <span className="flex items-center">
-                  Contact Support
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </Button>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10 section-overlay-cta" />
-        <div className="container px-4 mx-auto max-w-4xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="relative group"
-          >
-            <div className="relative border border-white/[0.08] bg-[#0d111c]/80 rounded-2xl p-12 backdrop-blur-lg overflow-hidden shadow-2xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/5 via-transparent to-brand-green/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-              <div className="relative text-center">
-                <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                  Ready to Get Started?
-                </h2>
-                <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">
-                  Join thousands of users converting fiat to crypto seamlessly
-                  across Africa.
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link href="/app">
-                    <GradientButton
-                      size="lg"
-                      className="px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl"
-                    >
-                      Launch App
-                      {/* <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" /> */}
-                    </GradientButton>
-                  </Link>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="px-8 py-6 text-base font-semibold"
-                  >
-                    Explore Docs
-                  </Button>
+                <div className="flex items-center justify-between text-[11px] text-white/25">
+                  <span>On-chain identity · Celo Mainnet</span>
+                  <span>ERC-721 · Registered</span>
                 </div>
               </div>
+            </motion.div>
 
-              {/* Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/10 to-brand-green/10 rounded-2xl blur-3xl -z-10 group-hover:blur-2xl transition-all duration-500" />
+            {/* Copy */}
+            <motion.div
+              initial={{ opacity: 0, x: 24 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="space-y-6"
+            >
+              <span className="inline-block px-3 py-1.5 rounded-full border border-purple-500/25 bg-purple-500/8 text-xs font-semibold text-purple-400 uppercase tracking-wider">
+                AI Agent
+              </span>
+              <h2 className="text-4xl font-bold text-white leading-tight">
+                An AI that earns trust{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-brand-blue">
+                  on-chain.
+                </span>
+              </h2>
+              <p className="text-white/50 leading-relaxed">
+                The Jahpay Swap Agent is registered on Celo Mainnet as an
+                ERC-8004 identity — an ERC-721 NFT with a public reputation.
+                Every swap it assists with is recorded on-chain, building a
+                verifiable track record that anyone can audit.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  "Recommends slippage based on live oracle conditions",
+                  "Detects Mento circuit breaker status before you swap",
+                  "Builds on-chain reputation with every transaction",
+                  "Discoverable by other agents via ERC-8004 Identity Registry",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-start gap-3 text-sm text-white/60"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-brand-green/15 border border-brand-green/25 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                Learn about ERC-8004 <ExternalLink className="w-4 h-4" />
+              </a>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────────── */}
+      <section className="relative py-24 lg:py-32">
+        <div className="container px-4 mx-auto max-w-3xl relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <h2 className="text-4xl font-bold text-white">Frequently asked.</h2>
+          </motion.div>
+          <div className="space-y-3">
+            {FAQS.map((faq) => (
+              <FAQItem key={faq.q} {...faq} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────── */}
+      <section className="relative py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]" />
+        <div className="container px-4 mx-auto max-w-3xl text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="space-y-6"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white">
+              Ready to swap?
+            </h2>
+            <p className="text-lg text-slate-400">
+              Connect your wallet and let the AI agent guide your first swap.
+            </p>
+            <div className="flex justify-center gap-4 flex-wrap">
+              <a
+                href="#swap"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-green text-white font-bold hover:opacity-90 hover:-translate-y-0.5 transition-all shadow-lg shadow-brand-blue/20"
+              >
+                Launch Swap <ArrowRight className="w-4 h-4" />
+              </a>
+              <a
+                href="https://celoscan.io/token/0xcebA9300f2b948710d2653dD7B07f33A8B32118C"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl border border-white/[0.1] text-white/60 hover:text-white hover:border-white/20 font-medium transition-all"
+              >
+                View on CeloScan <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
           </motion.div>
         </div>
