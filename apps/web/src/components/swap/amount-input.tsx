@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+type TokenInfo = { symbol: string; name: string; decimals: number; address: string; color?: string; logo?: string; icon?: string; balance?: string; usdValue?: number; };
+
 import { cn } from '@/lib/utils';
-import { TokenInfo } from 'types/swap';
+
 
 export interface AmountInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   token: TokenInfo;
