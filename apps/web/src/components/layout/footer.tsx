@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SiteConfig } from "@/config/site";
-import { Twitter, Github, Mail } from "lucide-react";
+import { X, GitBranch, Mail } from "lucide-react";
 import Image from "next/image";
 
 export function Footer() {
@@ -28,7 +28,7 @@ export function Footer() {
                 className="text-gray-400 hover:text-brand-blue transition-colors"
                 aria-label="Twitter"
               >
-                <Twitter className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </a>
               <a
                 href={SiteConfig.links.github}
@@ -37,7 +37,7 @@ export function Footer() {
                 className="text-gray-400 hover:text-brand-blue transition-colors"
                 aria-label="GitHub"
               >
-                <Github className="h-5 w-5" />
+                <GitBranch className="h-5 w-5" />
               </a>
               <a
                 href="mailto:hello@jahpay.app"
