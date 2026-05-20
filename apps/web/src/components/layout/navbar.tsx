@@ -66,19 +66,6 @@ export function Navbar() {
 
         {/* Right side - Desktop nav and mobile menu button */}
         <div className="flex items-center gap-4">
-          {/* Desktop navigation links */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              href="/transactions"
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-white",
-                pathname === "/transactions" ? "text-white" : "text-gray-400",
-              )}
-            >
-              Transactions
-            </Link>
-          </nav>
-
           {/* Mobile Menu Button */}
           <Sheet>
             <SheetTrigger asChild>
@@ -106,19 +93,7 @@ export function Navbar() {
                     priority
                   />
                 </div>
-                <nav className="flex flex-col gap-4 mt-6 pt-6 border-t border-gray-800">
-                  <Link
-                    href="/transactions"
-                    className={cn(
-                      "text-sm font-medium transition-colors hover:text-white py-2",
-                      pathname === "/transactions"
-                        ? "text-white"
-                        : "text-gray-400",
-                    )}
-                  >
-                    Transactions
-                  </Link>
-                </nav>
+                <nav className="flex flex-col gap-4 mt-6 pt-6 border-t border-gray-800" />
                 <div className="mt-auto pt-6">
                   <WalletConnectButton />
                 </div>

@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { AppProviders } from "@/components/app-providers";
 
-import { Navbar } from "@/components/layout/navbar";
-import { WalletProvider } from "@/components/wallet-provider";
-import { Footer } from "@/components/layout/footer";
-import { Toaster } from "@/components/ui/toaster";
-import { TransactionsProvider } from "@/contexts/transactions-context";
-import { FooterWrapper } from "@/components/layout/footer-wrapper";
-
-const inter = Inter({ subsets: ["latin"] });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
 
 export const dynamic = "force-dynamic";
 
@@ -26,17 +24,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={inter.className}>
-        <div className="relative flex min-h-screen flex-col">
-            <WalletProvider>
-              <TransactionsProvider>
-                <Navbar />
-                <main className="flex-1 pt-20">{children}</main>
-                <FooterWrapper />
-                <Toaster />
-              </TransactionsProvider>
-            </WalletProvider>
-        </div>
+      <body
+        className={`${spaceGrotesk.variable} antialiased`}
+        suppressHydrationWarning
+      >
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

@@ -1,8 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
 @layer base {
   :root {
@@ -27,7 +24,6 @@
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
 
-    /* Professional design tokens */
     --brand-blue: 217 91% 60%;
     --brand-green: 160 84% 39%;
     --surface-0: 222 47% 4%;
@@ -59,33 +55,45 @@
     --input: 240 3.7% 15.9%;
     --ring: 0 0% 98%;
   }
-}
 
-@layer base {
   * {
     @apply border-[hsl(var(--border))];
   }
+
   body {
-    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
-    background-color: #0A0A0A;
-    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    @apply bg-[#060b14] text-[hsl(var(--foreground))] antialiased;
+    font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 0
+    );
     background-size: 2rem 2rem;
   }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: "Space Grotesk", sans-serif;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   }
 }
 
 @layer utilities {
   .glow-blue {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.25), 0 0 60px rgba(59, 130, 246, 0.08);
+    box-shadow:
+      0 0 20px rgba(59, 130, 246, 0.25),
+      0 0 60px rgba(59, 130, 246, 0.08);
   }
   .glow-blue-sm {
     box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
   }
   .glow-green {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.25), 0 0 60px rgba(16, 185, 129, 0.08);
+    box-shadow:
+      0 0 20px rgba(16, 185, 129, 0.25),
+      0 0 60px rgba(16, 185, 129, 0.08);
   }
   .glow-green-sm {
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
@@ -110,7 +118,7 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
   }
   .noise-overlay::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
@@ -119,66 +127,128 @@
     opacity: 0.4;
   }
 
-  /* === Shared dot-grid background === */
   .jahpay-grid {
-    background-image:
-      radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+    background-image: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.12) 1px,
+      transparent 1px
+    );
     background-size: 32px 32px;
   }
 
-  /* === Global page base === */
   .jahpay-bg {
     background-color: #060b14;
   }
 
-  /* === Section overlays for blending sections over grid === */
   .section-overlay-hero {
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+    background: radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      rgba(59, 130, 246, 0.12) 0%,
+      transparent 70%
+    );
   }
   .section-overlay-features {
-    background: linear-gradient(to bottom, transparent 0%, rgba(6, 11, 20, 0.85) 30%, rgba(6, 11, 20, 0.85) 70%, transparent 100%);
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(6, 11, 20, 0.85) 30%,
+      rgba(6, 11, 20, 0.85) 70%,
+      transparent 100%
+    );
   }
   .section-overlay-howit {
-    background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 70%);
+    background: radial-gradient(
+      ellipse 70% 50% at 50% 50%,
+      rgba(16, 185, 129, 0.06) 0%,
+      transparent 70%
+    );
   }
   .section-overlay-providers {
-    background: linear-gradient(to bottom, transparent 0%, rgba(0, 15, 30, 0.6) 30%, rgba(0, 15, 30, 0.6) 70%, transparent 100%);
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 15, 30, 0.6) 30%,
+      rgba(0, 15, 30, 0.6) 70%,
+      transparent 100%
+    );
   }
   .section-overlay-cta {
-    background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(59, 130, 246, 0.10) 0%, transparent 70%);
+    background: radial-gradient(
+      ellipse 70% 60% at 50% 50%,
+      rgba(59, 130, 246, 0.1) 0%,
+      transparent 70%
+    );
   }
   .section-overlay-faq {
-    background: linear-gradient(to bottom, transparent 0%, rgba(6, 11, 20, 0.7) 20%, rgba(6, 11, 20, 0.7) 80%, transparent 100%);
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(6, 11, 20, 0.7) 20%,
+      rgba(6, 11, 20, 0.7) 80%,
+      transparent 100%
+    );
   }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-20px) scale(1.03); }
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.03);
+  }
 }
 
 @keyframes float-delayed {
-  0%, 100% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-15px) scale(1.02); }
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-15px) scale(1.02);
+  }
 }
 
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
-  50% { opacity: 0.8; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0);
+  }
 }
 
 @keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
-
