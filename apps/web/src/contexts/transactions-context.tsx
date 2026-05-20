@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import {
   Transaction,
@@ -285,13 +286,16 @@ export function useTransactions() {
 // Custom hook for filtering transactions
 export function useFilteredTransactions(filters: TransactionFilters = {}) {
   const { transactions, isLoading, error } = useTransactions();
-  const [filteredTransactions, setFilteredTransactions] = useState<
-    Transaction[]
-  >([]);
 
-  useEffect(() => {
-    const filtered = transactions.filter((tx) => {
-      // Apply status filter
+  const statusKey = Array.isArray(filters.status)
+    ? filters.status.join(",")
+    : filters.status ?? "";
+  const typeKey = Array.isArray(filters.type)
+    ? filters.type.join(",")
+    : filters.type ?? "";
+
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions.filter((tx) => {
       if (filters.status) {
         const statuses = Array.isArray(filters.status)
           ? filters.status
@@ -299,7 +303,6 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
         if (!statuses.includes(tx.status)) return false;
       }
 
-      // Apply type filter
       if (filters.type) {
         const types = Array.isArray(filters.type)
           ? filters.type
@@ -307,11 +310,9 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
         if (!types.includes(tx.type)) return false;
       }
 
-      // Apply date range filter
       if (filters.startDate && tx.createdAt < filters.startDate) return false;
       if (filters.endDate && tx.createdAt > filters.endDate) return false;
 
-      // Apply search
       if (filters.search) {
         const search = filters.search.toLowerCase();
         const matchesId = tx.id.toLowerCase().includes(search);
@@ -319,7 +320,9 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
           tx.metadata.fromAddress?.toLowerCase().includes(search) || false;
         const matchesTo =
           tx.metadata.toAddress?.toLowerCase().includes(search) || false;
-        const matchesProvider = tx.provider ?? "Unknown".toLowerCase().includes(search);
+        const matchesProvider = (tx.provider ?? "Unknown")
+          .toLowerCase()
+          .includes(search);
 
         if (!(matchesId || matchesFrom || matchesTo || matchesProvider)) {
           return false;
@@ -329,19 +332,36 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
       return true;
     });
 
-    // Sort
     const sortBy = filters.sortBy || "createdAt";
     const sortOrder = filters.sortOrder || "desc";
 
-    filtered.sort((a, b) => {
+    filtered = [...filtered].sort((a, b) => {
+      const aValue = sortBy === "createdAt" ? a.createdAt : a.updatedAt;
+      const bValue = sortBy === "createdAt" ? b.createdAt : b.updatedAt;
       if (sortOrder === "asc") {
-        return a[sortBy] > b[sortBy] ? 1 : -1;
+        return aValue > bValue ? 1 : -1;
       }
-      return a[sortBy] < b[sortBy] ? 1 : -1;
+      return aValue < bValue ? 1 : -1;
     });
 
-    setFilteredTransactions(filtered);
-  }, [transactions, filters]);
+    if (filters.limit) {
+      const offset = filters.offset || 0;
+      filtered = filtered.slice(offset, offset + filters.limit);
+    }
+
+    return filtered;
+  }, [
+    transactions,
+    statusKey,
+    typeKey,
+    filters.startDate,
+    filters.endDate,
+    filters.search,
+    filters.sortBy,
+    filters.sortOrder,
+    filters.limit,
+    filters.offset,
+  ]);
 
   return {
     transactions: filteredTransactions,
