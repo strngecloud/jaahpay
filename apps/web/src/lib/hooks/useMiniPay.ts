@@ -37,5 +37,6 @@ export async function getMiniPayAddress(): Promise<string | null> {
  */
 export function isRunningInMiniPay(): boolean {
     if (typeof window === 'undefined') return false;
-    return !!(window.ethereum && (window.ethereum as any).isMiniPay);
+    const ethereum = (window as Window & { ethereum?: { isMiniPay?: boolean } }).ethereum;
+    return !!(ethereum?.isMiniPay);
 }
