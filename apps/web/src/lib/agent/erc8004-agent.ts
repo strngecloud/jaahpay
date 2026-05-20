@@ -41,27 +41,29 @@ export interface AgentReputation {
  * Returns cached/mock data if agent is not yet registered.
  */
 export async function getAgentReputation(): Promise<AgentReputation> {
-  const agentId = AGENT_CONFIG.agentId;
-
-  if (!agentId) {
+  try {
+    const response = await fetch('/api/agent/reputation', {
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Reputation API failed');
+    const data = await response.json();
     return {
-      agentId: null,
+      agentId: data.agentId,
+      averageScore: data.averageScore,
+      totalFeedback: data.totalFeedback ?? 0,
+      successRate: data.successRate,
+      isRegistered: data.isRegistered ?? false,
+    };
+  } catch {
+    const agentId = AGENT_CONFIG.agentId;
+    return {
+      agentId,
       averageScore: null,
       totalFeedback: 0,
       successRate: null,
-      isRegistered: false,
+      isRegistered: !!agentId,
     };
   }
-
-  // Always return mock data on client-side
-  // The SDK is server-only and should not be imported in client code
-  return {
-    agentId,
-    averageScore: 92,
-    totalFeedback: 0,
-    successRate: 99.8,
-    isRegistered: true,
-  };
 }
 
 // ─── AI Swap Recommendation ───────────────────────────────────────────────────
@@ -72,13 +74,14 @@ export async function getAgentReputation(): Promise<AgentReputation> {
  */
 export async function getSwapRecommendation(
   amount: string,
-  fromToken: 'USDC' | 'USDT'
+  fromToken: 'USDC' | 'USDT',
+  chainId?: number,
 ): Promise<AgentRecommendation> {
   try {
     const response = await fetch('/api/agent/recommendation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, fromToken }),
+      body: JSON.stringify({ amount, fromToken, chainId }),
     });
 
     if (!response.ok) throw new Error('Recommendation API failed');
