@@ -8,13 +8,15 @@ import {
   AlertCircle,
   Info,
   Zap,
+  ChevronDown,
 } from "lucide-react";
 import {
   getSwapTokenInfo,
   formatTokenAmount,
+  isValidSwapPair,
 } from "@/lib/swap/usdc-usdt-swap";
 import type { AgentRecommendation } from "@/lib/agent/erc8004-agent";
-import { PLATFORM_FEE_PERCENT } from "@/lib/minipay/constants";
+import { PLATFORM_FEE_PERCENT, SWAP_TOKENS } from "@/lib/minipay/constants";
 import { useSwap } from "@/lib/hooks/use-swap";
 import { SwapConfirmModal } from "@/components/swap/swap-confirm-modal";
 import { cn } from "@/lib/utils";
@@ -27,21 +29,30 @@ function TokenBadge({
   symbol: SwapTokenSymbol;
   size?: "sm" | "lg";
 }) {
-  const isUSDC = symbol === "USDC";
   const sz = size === "lg" ? "w-9 h-9 text-sm" : "w-6 h-6 text-[10px]";
+
+  const getTokenStyle = (sym: SwapTokenSymbol) => {
+    switch (sym) {
+      case "USDC":
+        return { bg: "linear-gradient(135deg,#2775CA,#1a5fa8)", text: "US" };
+      case "USDT":
+        return { bg: "linear-gradient(135deg,#26A17B,#1a7a5a)", text: "UT" };
+      case "CELO":
+        return { bg: "linear-gradient(135deg,#FCFF52,#35D07F)", text: "CE" };
+    }
+  };
+
+  const style = getTokenStyle(symbol);
+
   return (
     <div
       className={cn(
         "rounded-full flex items-center justify-center font-bold text-white shrink-0",
         sz,
       )}
-      style={{
-        background: isUSDC
-          ? "linear-gradient(135deg,#2775CA,#1a5fa8)"
-          : "linear-gradient(135deg,#26A17B,#1a7a5a)",
-      }}
+      style={{ background: style.bg }}
     >
-      {symbol.slice(0, 2)}
+      {style.text}
     </div>
   );
 }
@@ -78,6 +89,93 @@ function SlippageSelector({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function TokenSelectorButton({
+  symbol,
+  onSelect,
+  disabled = false,
+}: {
+  symbol: SwapTokenSymbol;
+  onSelect: (token: SwapTokenSymbol) => void;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const info = getSwapTokenInfo(symbol);
+
+  const handleSelect = (token: SwapTokenSymbol) => {
+    onSelect(token);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={cn(
+          "flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.08] border border-white/[0.1] transition-all",
+          !disabled && "hover:bg-white/[0.12] hover:border-white/[0.15]",
+          disabled && "opacity-50 cursor-not-allowed",
+        )}
+      >
+        <TokenBadge symbol={symbol} />
+        <div>
+          <div className="text-sm font-bold text-white">{symbol}</div>
+          <div className="text-[10px] text-white/40">{info.name}</div>
+        </div>
+        {!disabled && <ChevronDown className="w-4 h-4 text-white/40" />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-0 mt-2 z-50 min-w-[180px] rounded-xl bg-[#0d111c] border border-white/[0.1] shadow-xl overflow-hidden"
+            >
+              {SWAP_TOKENS.map((token) => {
+                const tokenInfo = getSwapTokenInfo(
+                  token.symbol as SwapTokenSymbol,
+                );
+                return (
+                  <button
+                    key={token.symbol}
+                    onClick={() =>
+                      handleSelect(token.symbol as SwapTokenSymbol)
+                    }
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2.5 transition-colors",
+                      token.symbol === symbol
+                        ? "bg-brand-blue/20 text-white"
+                        : "hover:bg-white/[0.05] text-white/80",
+                    )}
+                  >
+                    <TokenBadge
+                      symbol={token.symbol as SwapTokenSymbol}
+                      size="sm"
+                    />
+                    <div className="text-left">
+                      <div className="text-sm font-bold">{token.symbol}</div>
+                      <div className="text-[10px] text-white/40">
+                        {tokenInfo.name}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -155,9 +253,7 @@ function SwapPanelContent({
       const txHash = await swap.executeSwap();
       if (txHash) onTransactionSuccess?.(txHash);
     } catch (err) {
-      onTransactionError?.(
-        err instanceof Error ? err.message : "Swap failed",
-      );
+      onTransactionError?.(err instanceof Error ? err.message : "Swap failed");
     }
   };
 
@@ -182,13 +278,11 @@ function SwapPanelContent({
               min="0"
               className="flex-1 bg-transparent text-3xl font-bold text-white placeholder-white/15 focus:outline-none min-w-0"
             />
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.08] border border-white/[0.1]">
-              <TokenBadge symbol={swap.fromToken} />
-              <div>
-                <div className="text-sm font-bold text-white">{swap.fromToken}</div>
-                <div className="text-[10px] text-white/40">{fromInfo.name}</div>
-              </div>
-            </div>
+            <TokenSelectorButton
+              symbol={swap.fromToken}
+              onSelect={swap.setFromToken}
+              disabled={swap.isSwapping}
+            />
           </div>
         </div>
 
@@ -226,13 +320,11 @@ function SwapPanelContent({
                 <span className="text-white/15">0.00</span>
               )}
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.07]">
-              <TokenBadge symbol={swap.toToken} />
-              <div>
-                <div className="text-sm font-bold text-white">{swap.toToken}</div>
-                <div className="text-[10px] text-white/40">{toInfo.name}</div>
-              </div>
-            </div>
+            <TokenSelectorButton
+              symbol={swap.toToken}
+              onSelect={swap.setToToken}
+              disabled={swap.isSwapping}
+            />
           </div>
         </div>
 
@@ -248,7 +340,8 @@ function SwapPanelContent({
                 <div className="flex justify-between text-xs">
                   <span className="text-white/35">Rate</span>
                   <span className="text-white/60 font-mono">
-                    1 {swap.fromToken} = {swap.quote.rate.toFixed(6)} {swap.toToken}
+                    1 {swap.fromToken} = {swap.quote.rate.toFixed(6)}{" "}
+                    {swap.toToken}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
