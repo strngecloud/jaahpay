@@ -9,7 +9,7 @@ import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG } from '..
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SwapTokenSymbol = 'USDC' | 'USDT';
+export type SwapTokenSymbol = 'USDC' | 'USDT' | 'CELO';
 
 export interface SwapQuote {
   fromToken: SwapTokenSymbol;
@@ -205,7 +205,17 @@ export function getSwapTokenInfo(symbol: SwapTokenSymbol) {
 }
 
 export function getOppositeToken(symbol: SwapTokenSymbol): SwapTokenSymbol {
+  // For CELO, default to USDC
+  if (symbol === 'CELO') return 'USDC';
+  // For USDC/USDT, toggle between them
   return symbol === 'USDC' ? 'USDT' : 'USDC';
+}
+
+export function isValidSwapPair(from: SwapTokenSymbol, to: SwapTokenSymbol): boolean {
+  // Can't swap token to itself
+  if (from === to) return false;
+  // All combinations of CELO, USDC, USDT are valid
+  return true;
 }
 
 export function formatTokenAmount(amount: string | number, decimals = 6): string {
