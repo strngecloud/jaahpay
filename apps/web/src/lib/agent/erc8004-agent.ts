@@ -74,7 +74,7 @@ export async function getAgentReputation(): Promise<AgentReputation> {
  */
 export async function getSwapRecommendation(
   amount: string,
-  fromToken: 'USDC' | 'USDT',
+  fromToken: 'USDC' | 'USDT' | 'CELO',
   chainId?: number,
 ): Promise<AgentRecommendation> {
   try {
@@ -88,11 +88,33 @@ export async function getSwapRecommendation(
     return await response.json();
   } catch {
     // Fallback recommendation when API is unavailable
-    return getFallbackRecommendation(parseFloat(amount));
+    return getFallbackRecommendation(parseFloat(amount), fromToken);
   }
 }
 
-function getFallbackRecommendation(amount: number): AgentRecommendation {
+function getFallbackRecommendation(amount: number, fromToken: 'USDC' | 'USDT' | 'CELO'): AgentRecommendation {
+  // CELO swaps may have higher volatility than stablecoin swaps
+  if (fromToken === 'CELO') {
+    if (amount > 100) {
+      return {
+        recommendedSlippageBps: 100,
+        marketCondition: 'volatile',
+        confidence: 75,
+        message: 'Large CELO swap. Using higher slippage due to potential price impact.',
+        badge: 'AI: Safe Mode',
+        showBadge: true,
+      };
+    }
+    return {
+      recommendedSlippageBps: 50,
+      marketCondition: 'normal',
+      confidence: 85,
+      message: 'CELO swap detected. Moderate slippage recommended.',
+      badge: 'AI Optimized',
+      showBadge: true,
+    };
+  }
+
   // Stablecoin swaps are inherently low-volatility; sensible defaults
   if (amount > 10_000) {
     return {
