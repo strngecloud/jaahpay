@@ -20,7 +20,7 @@ export const CELO_SEPOLIA_CHAIN = {
   testnet: true,
 };
 
-// ─── Swap Tokens (USDC ↔ USDT only) ─────────────────────────────────────────
+// ─── Swap Tokens (USDC ↔ USDT ↔ CELO) ──────────────────────────────────────
 
 export const SWAP_TOKENS = [
   {
@@ -42,6 +42,16 @@ export const SWAP_TOKENS = [
     color: '#26A17B',
     logo: '/tokens/usdt.png',
     issuer: 'Tether',
+  },
+  {
+    symbol: 'CELO',
+    name: 'Celo',
+    decimals: 18,
+    address: '0x471EcE3750Da237a93B122c29e4039db560e3F6f',      // Celo Mainnet (wrapped CELO for Mento)
+    addressSepolia: '0xF194AfDf50Bae0a21eF85469D1521810657A1B53', // Celo Sepolia
+    color: '#FCFF52',
+    logo: '/tokens/celo.png',
+    issuer: 'Celo',
   },
 ] as const;
 
@@ -82,15 +92,15 @@ export const FEE_COLLECTOR_ADDRESS =
 
 // ─── ERC-8004 Agent ───────────────────────────────────────────────────────────
 
-export const 
-AGENT_CONFIG = {
-  name: 'Jahpay Swap Agent',
-  description: 'AI-powered USDC↔USDT swap optimizer on Celo',
-  /** Set after first registration: NEXT_PUBLIC_AGENT_ID */
-  agentId: process.env.NEXT_PUBLIC_AGENT_ID || null,
-  manifestUrl: '/api/agent/manifest',
-  chainId: 42220,
-};
+export const
+  AGENT_CONFIG = {
+    name: 'Jahpay Swap Agent',
+    description: 'AI-powered USDC↔USDT↔CELO swap optimizer on Celo',
+    /** Set after first registration: NEXT_PUBLIC_AGENT_ID */
+    agentId: process.env.NEXT_PUBLIC_AGENT_ID || null,
+    manifestUrl: '/api/agent/manifest',
+    chainId: 42220,
+  };
 
 // ERC-8004 contract addresses on Celo Mainnet (from docs.celo.org)
 export const ERC8004_CONTRACTS = {
