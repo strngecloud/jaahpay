@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
+import { headers } from "next/headers";
+import { cookieToInitialState } from "wagmi";
+import { getConfig } from "@/lib/wagmi-config";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -17,18 +20,23 @@ export const metadata: Metadata = {
     "Swap USDC and USDT instantly on Celo with oracle-priced rates, 0.3% fee, and an ERC-8004 AI agent.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const initialState = cookieToInitialState(
+    getConfig(),
+    (await headers()).get("cookie"),
+  );
+
   return (
     <html lang="en" className="dark">
       <body
         className={`${spaceGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AppProviders>{children}</AppProviders>
+        <AppProviders initialState={initialState}>{children}</AppProviders>
       </body>
     </html>
   );

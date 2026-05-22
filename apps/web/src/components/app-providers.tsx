@@ -6,6 +6,7 @@ import { TransactionsProvider } from "@/contexts/transactions-context";
 import { Navbar } from "@/components/layout/navbar";
 import { FooterWrapper } from "@/components/layout/footer-wrapper";
 import { Toaster } from "@/components/ui/toaster";
+import { type State } from "wagmi";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,10 +27,16 @@ function AppLoadingShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  children,
+  initialState,
+}: {
+  children: React.ReactNode;
+  initialState?: State;
+}) {
   return (
     <QueryClientProvider client={queryClient}>
-      <Web3Providers>
+      <Web3Providers initialState={initialState}>
         <TransactionsProvider>
           <AppLoadingShell>
             <Navbar />
