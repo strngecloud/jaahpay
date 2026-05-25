@@ -175,6 +175,14 @@ export default function Home() {
             backgroundSize: "32px 32px",
           }}
         />
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: "url('/grid.svg')",
+            backgroundSize: "100px 100px",
+            backgroundRepeat: "repeat",
+          }}
+        />
         <motion.div
           animate={{ opacity: [0.2, 0.4, 0.2] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
