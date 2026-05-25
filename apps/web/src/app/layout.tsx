@@ -3,8 +3,6 @@ import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { headers } from "next/headers";
-import { cookieToInitialState } from "wagmi";
-import { getConfig } from "@/lib/wagmi-config";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -25,10 +23,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const initialState = cookieToInitialState(
-    getConfig(),
-    (await headers()).get("cookie"),
-  );
+  const cookieHeader = (await headers()).get("cookie");
 
   return (
     <html lang="en" className="dark">
@@ -36,7 +31,7 @@ export default async function RootLayout({
         className={`${spaceGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AppProviders initialState={initialState}>{children}</AppProviders>
+        <AppProviders cookieHeader={cookieHeader}>{children}</AppProviders>
       </body>
     </html>
   );

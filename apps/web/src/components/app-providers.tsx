@@ -30,13 +30,15 @@ function AppLoadingShell({ children }: { children: React.ReactNode }) {
 export function AppProviders({
   children,
   initialState,
+  cookieHeader,
 }: {
   children: React.ReactNode;
   initialState?: State;
+  cookieHeader?: string | null;
 }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <Web3Providers initialState={initialState}>
+      <Web3Providers initialState={initialState} cookieHeader={cookieHeader}>
         <TransactionsProvider>
           <AppLoadingShell>
             <Navbar />
