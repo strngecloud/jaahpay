@@ -5,10 +5,10 @@
  * Keeps WalletConnect / indexedDB off the server.
  */
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useMemo } from "react";
 import "@rainbow-me/rainbowkit/styles.css";
 import { darkTheme, RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { WagmiProvider, type State } from "wagmi";
+import { WagmiProvider, type State, cookieToInitialState } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/auth-context";
 import { getConfig } from "@/lib/wagmi-config";
@@ -24,9 +24,11 @@ const customDarkTheme = darkTheme({
 export function Web3Providers({
   children,
   initialState,
+  cookieHeader,
 }: {
   children: ReactNode;
   initialState?: State;
+  cookieHeader?: string | null;
 }) {
   const [config] = useState(() => getConfig());
   const [queryClient] = useState(
@@ -41,8 +43,16 @@ export function Web3Providers({
       }),
   );
 
+  // Compute initial state on client if cookie header is provided
+  const computedInitialState = useMemo(() => {
+    if (cookieHeader && !initialState) {
+      return cookieToInitialState(config, cookieHeader);
+    }
+    return initialState;
+  }, [config, cookieHeader, initialState]);
+
   return (
-    <WagmiProvider config={config} initialState={initialState}>
+    <WagmiProvider config={config} initialState={computedInitialState}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider theme={customDarkTheme} modalSize="compact">
           <AuthProvider>{children}</AuthProvider>
