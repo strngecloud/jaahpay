@@ -42,6 +42,8 @@ interface SwapConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading: boolean;
+  fromBalance?: string | null;
+  toBalance?: string | null;
 }
 
 export function SwapConfirmModal({
@@ -49,6 +51,8 @@ export function SwapConfirmModal({
   onConfirm,
   onCancel,
   isLoading,
+  fromBalance,
+  toBalance,
 }: SwapConfirmModalProps) {
   return (
     <motion.div
@@ -69,16 +73,30 @@ export function SwapConfirmModal({
           <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04]">
             <div className="flex items-center gap-2">
               <TokenBadge symbol={quote.fromToken} size="sm" />
-              <span className="text-white font-semibold">
-                {formatTokenAmount(quote.amountIn)} {quote.fromToken}
-              </span>
+              <div>
+                <span className="text-white font-semibold block">
+                  {formatTokenAmount(quote.amountIn)} {quote.fromToken}
+                </span>
+                {fromBalance && (
+                  <span className="text-xs text-white/40">
+                    Bal: {parseFloat(fromBalance).toFixed(2)}
+                  </span>
+                )}
+              </div>
             </div>
             <ArrowDownUp className="w-4 h-4 text-white/40" />
             <div className="flex items-center gap-2">
               <TokenBadge symbol={quote.toToken} size="sm" />
-              <span className="text-brand-green font-semibold">
-                {formatTokenAmount(quote.amountOutNet)} {quote.toToken}
-              </span>
+              <div>
+                <span className="text-brand-green font-semibold block">
+                  {formatTokenAmount(quote.amountOutNet)} {quote.toToken}
+                </span>
+                {toBalance && (
+                  <span className="text-xs text-white/40">
+                    Bal: {parseFloat(toBalance).toFixed(2)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

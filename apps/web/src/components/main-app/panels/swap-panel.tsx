@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownUp,
@@ -19,6 +20,7 @@ import {
 import type { AgentRecommendation } from "@/lib/agent/erc8004-agent";
 import { PLATFORM_FEE_PERCENT, SWAP_TOKENS } from "@/lib/minipay/constants";
 import { useSwap } from "@/lib/hooks/use-swap";
+import { useTokenBalances } from "@/lib/hooks/use-token-balances";
 import { SwapConfirmModal } from "@/components/swap/swap-confirm-modal";
 import { cn } from "@/lib/utils";
 import type { SwapTokenSymbol } from "@/lib/swap/usdc-usdt-swap";
@@ -98,13 +100,16 @@ function TokenSelectorButton({
   symbol,
   onSelect,
   disabled = false,
+  balance,
 }: {
   symbol: SwapTokenSymbol;
   onSelect: (token: SwapTokenSymbol) => void;
   disabled?: boolean;
+  balance?: string | null;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const info = getSwapTokenInfo(symbol);
+  const { balances } = useTokenBalances();
 
   const handleSelect = (token: SwapTokenSymbol) => {
     onSelect(token);
@@ -122,7 +127,17 @@ function TokenSelectorButton({
           disabled && "opacity-50 cursor-not-allowed",
         )}
       >
-        <TokenBadge symbol={symbol} />
+        {info.logo ? (
+          <Image
+            src={info.logo}
+            alt={symbol}
+            width={24}
+            height={24}
+            className="w-6 h-6 rounded-full"
+          />
+        ) : (
+          <TokenBadge symbol={symbol} />
+        )}
         <div>
           <div className="text-sm font-bold text-white">{symbol}</div>
           <div className="text-[10px] text-white/40">{info.name}</div>
@@ -141,12 +156,13 @@ function TokenSelectorButton({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 mt-2 z-50 min-w-[180px] rounded-xl bg-[#0d111c] border border-white/[0.1] shadow-xl overflow-hidden"
+              className="absolute right-0 mt-2 z-50 min-w-[220px] rounded-xl bg-[#0d111c] border border-white/[0.1] shadow-xl overflow-hidden"
             >
               {SWAP_TOKENS.map((token) => {
                 const tokenInfo = getSwapTokenInfo(
                   token.symbol as SwapTokenSymbol,
                 );
+                const tokenBalance = balances[token.symbol as SwapTokenSymbol];
                 return (
                   <button
                     key={token.symbol}
@@ -160,16 +176,36 @@ function TokenSelectorButton({
                         : "hover:bg-white/[0.05] text-white/80",
                     )}
                   >
-                    <TokenBadge
-                      symbol={token.symbol as SwapTokenSymbol}
-                      size="sm"
-                    />
-                    <div className="text-left">
+                    {tokenInfo.logo ? (
+                      <Image
+                        src={tokenInfo.logo}
+                        alt={token.symbol}
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded-full"
+                      />
+                    ) : (
+                      <TokenBadge
+                        symbol={token.symbol as SwapTokenSymbol}
+                        size="sm"
+                      />
+                    )}
+                    <div className="flex-1 text-left">
                       <div className="text-sm font-bold">{token.symbol}</div>
                       <div className="text-[10px] text-white/40">
                         {tokenInfo.name}
                       </div>
                     </div>
+                    {tokenBalance && (
+                      <div className="text-right">
+                        <div className="text-xs font-medium text-white/80">
+                          {parseFloat(tokenBalance).toFixed(2)}
+                        </div>
+                        <div className="text-[10px] text-white/40">
+                          {token.symbol}
+                        </div>
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -267,11 +303,11 @@ function SwapPanelContent({
               You Send
             </span>
             <span className="text-xs text-white/30 font-mono">
-              {swap.fromToken === 'CELO'
-                ? (swap.quote
-                    ? `≈ $${formatTokenAmount(String(parseFloat(swap.fromAmount || '0') * swap.quote.rate))} USD`
-                    : '')
-                : `≈ $${formatTokenAmount(swap.fromAmount || '0')} USD`}
+              {swap.balance && (
+                <>
+                  Bal: {parseFloat(swap.balance).toFixed(2)} {swap.fromToken}
+                </>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -287,6 +323,7 @@ function SwapPanelContent({
               symbol={swap.fromToken}
               onSelect={swap.setFromToken}
               disabled={swap.isSwapping}
+              balance={swap.balance}
             />
           </div>
         </div>
@@ -357,16 +394,18 @@ function SwapPanelContent({
                     {formatTokenAmount(swap.quote.platformFee)} {swap.toToken}
                   </span>
                 </div>
-                {swap.quote.route === 'uniswap-v3' ? (
+                {swap.quote.route === "uniswap-v3" ? (
                   <div className="flex items-center gap-1.5 text-xs text-brand-blue/70">
                     <Zap className="w-3 h-3" />
                     <span>Uniswap V3 on Celo</span>
                   </div>
-                ) : swap.quote.route === "via-usdm" && (
-                  <div className="flex items-center gap-1.5 text-xs text-yellow-400/70">
-                    <Info className="w-3 h-3" />
-                    <span>Routing via USDm for best price</span>
-                  </div>
+                ) : (
+                  swap.quote.route === "via-usdm" && (
+                    <div className="flex items-center gap-1.5 text-xs text-yellow-400/70">
+                      <Info className="w-3 h-3" />
+                      <span>Routing via USDm for best price</span>
+                    </div>
+                  )
                 )}
               </div>
               <div className="px-1 pt-1">
@@ -443,6 +482,7 @@ function SwapPanelContent({
             onConfirm={handleSwap}
             onCancel={() => swap.setShowConfirm(false)}
             isLoading={swap.isSwapping}
+            fromBalance={swap.balance}
           />
         )}
       </AnimatePresence>
