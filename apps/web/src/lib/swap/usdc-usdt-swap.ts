@@ -6,6 +6,7 @@
 import { Mento, ChainId, deadlineFromMinutes } from '@mento-protocol/mento-sdk';
 import { parseUnits, formatUnits } from 'viem';
 import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG } from '../minipay/constants';
+import { getUniswapQuote, buildUniswapSwapTransaction } from './uniswap-swap';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ export interface SwapQuote {
   /** Exchange rate (net) */
   rate: number;
   /** Is this a direct swap or routed via USDm? */
-  route: 'direct' | 'via-usdm';
+  route: 'direct' | 'via-usdm' | 'uniswap-v3';
   /** Slippage tolerance in BPS used for this quote */
   slippageBps: number;
   /** Is the pair currently tradable? */
@@ -37,6 +38,13 @@ export interface SwapTransaction {
   approval: any | null;
   swap: any;
   quote: SwapQuote;
+}
+
+// ─── Routing ──────────────────────────────────────────────────────────────────
+
+/** Returns true when at least one side of the pair is CELO (requires Uniswap) */
+export function isCeloPair(from: SwapTokenSymbol, to: SwapTokenSymbol): boolean {
+  return from === 'CELO' || to === 'CELO';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,6 +113,11 @@ export async function getSwapQuote(
     throw new Error('Amount must be greater than 0');
   }
 
+  // Route CELO pairs through Uniswap V3
+  if (isCeloPair(fromToken, toToken)) {
+    return getUniswapQuote(fromToken, toToken, amountIn, slippageBps);
+  }
+
   const mento = await getMento(chainId);
   const fromAddr = getTokenAddress(fromToken, chainId);
   const toAddr = getTokenAddress(toToken, chainId);
@@ -166,6 +179,11 @@ export async function buildSwapTransaction(
   slippageBps: number = SWAP_CONFIG.DEFAULT_SLIPPAGE_BPS,
   chainId = 42220
 ): Promise<SwapTransaction> {
+  // Route CELO pairs through Uniswap V3
+  if (isCeloPair(fromToken, toToken)) {
+    return buildUniswapSwapTransaction(fromToken, toToken, amountIn, userAddress, slippageBps);
+  }
+
   const quote = await getSwapQuote(fromToken, toToken, amountIn, slippageBps, chainId);
 
   if (!quote.isTradable) {
