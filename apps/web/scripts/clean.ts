@@ -22,7 +22,7 @@ const RPC_URL = chain.rpcUrls.default.http[0];
 async function writeToContract() {
     try {
         if (!PRIVATE_KEY) {
-            throw new Error('AGENT_DEPLOYER_PRIVATE_KEY environment variable is required');
+            throw new Error('PRIVATE_KEY environment variable is required');
         }
 
         if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x') {
