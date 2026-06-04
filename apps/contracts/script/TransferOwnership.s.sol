@@ -10,8 +10,7 @@ contract TransferOwnershipScript is Script {
     address public newOwner = 0x3E192d109d1dd323375Ac1Ed040f817918E82d63;
 
     // Existing contract addresses (update these with your deployed addresses)
-    address payable public feeCollectorAddress =
-        payable(0x5c043e1D09495F04a9f33551c49CE244c8226C46);
+    address payable public feeCollectorAddress = payable(0x5c043e1D09495F04a9f33551c49CE244c8226C46);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");

@@ -53,11 +53,15 @@ contract MockDEX {
 
 contract ReentrantTarget {
     JahpaySwapRouter public router;
+
     constructor(address payable _router) {
         router = JahpaySwapRouter(_router);
     }
 
-    function swap(address tokenIn, uint256 amountIn, address tokenOut, address target, bytes calldata data) external payable {
+    function swap(address tokenIn, uint256 amountIn, address tokenOut, address target, bytes calldata data)
+        external
+        payable
+    {
         // Reenter
         router.swap(tokenIn, amountIn, tokenOut, target, data);
     }
@@ -87,12 +91,8 @@ contract JahpaySwapRouterTest is Test {
         implementation = new JahpaySwapRouter();
 
         // Encode initializer call
-        bytes memory initData = abi.encodeWithSelector(
-            JahpaySwapRouter.initialize.selector,
-            owner,
-            feeCollector,
-            PLATFORM_FEE_BPS
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(JahpaySwapRouter.initialize.selector, owner, feeCollector, PLATFORM_FEE_BPS);
 
         // Deploy proxy
         proxy = new ERC1967Proxy(address(implementation), initData);
@@ -178,27 +178,16 @@ contract JahpaySwapRouterTest is Test {
     // ============ Swap Execution Tests ============
 
     function test_Swap_ERC20_to_ERC20() public {
-        uint256 amountIn = 1000 * 10**6; // 1000 USDC
+        uint256 amountIn = 1000 * 10 ** 6; // 1000 USDC
         usdc.mint(user, amountIn);
 
         vm.startPrank(user);
         usdc.approve(address(router), amountIn);
 
-        bytes memory dexCalldata = abi.encodeWithSelector(
-            MockDEX.swap.selector,
-            address(usdc),
-            address(usdt),
-            amountIn,
-            address(router)
-        );
+        bytes memory dexCalldata =
+            abi.encodeWithSelector(MockDEX.swap.selector, address(usdc), address(usdt), amountIn, address(router));
 
-        router.swap(
-            address(usdc),
-            amountIn,
-            address(usdt),
-            address(dex),
-            dexCalldata
-        );
+        router.swap(address(usdc), amountIn, address(usdt), address(dex), dexCalldata);
 
         vm.stopPrank();
 
@@ -215,19 +204,10 @@ contract JahpaySwapRouterTest is Test {
         vm.deal(user, amountIn);
 
         vm.startPrank(user);
-        bytes memory dexCalldata = abi.encodeWithSelector(
-            MockDEX.swapCeloToErc20.selector,
-            address(usdt),
-            address(router)
-        );
+        bytes memory dexCalldata =
+            abi.encodeWithSelector(MockDEX.swapCeloToErc20.selector, address(usdt), address(router));
 
-        router.swap{value: amountIn}(
-            address(0),
-            amountIn,
-            address(usdt),
-            address(dex),
-            dexCalldata
-        );
+        router.swap{value: amountIn}(address(0), amountIn, address(usdt), address(dex), dexCalldata);
         vm.stopPrank();
 
         uint256 expectedGross = amountIn; // 1:1 rate
@@ -239,29 +219,19 @@ contract JahpaySwapRouterTest is Test {
     }
 
     function test_Swap_ERC20_to_CELO() public {
-        uint256 amountIn = 1000 * 10**6; // 1000 USDC
+        uint256 amountIn = 1000 * 10 ** 6; // 1000 USDC
         usdc.mint(user, amountIn);
 
         vm.startPrank(user);
         usdc.approve(address(router), amountIn);
 
-        bytes memory dexCalldata = abi.encodeWithSelector(
-            MockDEX.swapErc20ToCelo.selector,
-            address(usdc),
-            amountIn,
-            payable(address(router))
-        );
+        bytes memory dexCalldata =
+            abi.encodeWithSelector(MockDEX.swapErc20ToCelo.selector, address(usdc), amountIn, payable(address(router)));
 
         uint256 userBalanceBefore = user.balance;
         uint256 collectorBalanceBefore = feeCollector.balance;
 
-        router.swap(
-            address(usdc),
-            amountIn,
-            address(0),
-            address(dex),
-            dexCalldata
-        );
+        router.swap(address(usdc), amountIn, address(0), address(dex), dexCalldata);
         vm.stopPrank();
 
         uint256 expectedGross = amountIn; // 1:1 rate
@@ -275,7 +245,7 @@ contract JahpaySwapRouterTest is Test {
     // ============ Swap Revert Edge Cases ============
 
     function test_Swap_Revert_UntrustedTarget() public {
-        uint256 amountIn = 1000 * 10**6;
+        uint256 amountIn = 1000 * 10 ** 6;
         usdc.mint(user, amountIn);
 
         vm.startPrank(user);
@@ -297,13 +267,7 @@ contract JahpaySwapRouterTest is Test {
         vm.startPrank(user);
         bytes memory dexCalldata = "";
         vm.expectRevert(JahpaySwapRouter.InvalidAmount.selector);
-        router.swap(
-            address(usdc),
-            0,
-            address(usdt),
-            address(dex),
-            dexCalldata
-        );
+        router.swap(address(usdc), 0, address(usdt), address(dex), dexCalldata);
         vm.stopPrank();
     }
 
@@ -315,17 +279,13 @@ contract JahpaySwapRouterTest is Test {
         bytes memory dexCalldata = "";
         vm.expectRevert("Insufficient msg.value");
         router.swap{value: 5 ether}( // Send less than amountIn
-            address(0),
-            amountIn,
-            address(usdt),
-            address(dex),
-            dexCalldata
+            address(0), amountIn, address(usdt), address(dex), dexCalldata
         );
         vm.stopPrank();
     }
 
     function test_Swap_Revert_SwapFailed() public {
-        uint256 amountIn = 1000 * 10**6;
+        uint256 amountIn = 1000 * 10 ** 6;
         usdc.mint(user, amountIn);
 
         vm.startPrank(user);
@@ -341,13 +301,7 @@ contract JahpaySwapRouterTest is Test {
         );
 
         vm.expectRevert();
-        router.swap(
-            address(usdc),
-            amountIn,
-            address(usdt),
-            address(dex),
-            dexCalldata
-        );
+        router.swap(address(usdc), amountIn, address(usdt), address(dex), dexCalldata);
         vm.stopPrank();
     }
 
@@ -355,7 +309,7 @@ contract JahpaySwapRouterTest is Test {
 
     function test_Swap_Revert_Reentrancy() public {
         ReentrantTarget badTarget = new ReentrantTarget(payable(address(router)));
-        
+
         vm.prank(owner);
         router.setTrustedTarget(address(badTarget), true);
 
@@ -366,22 +320,11 @@ contract JahpaySwapRouterTest is Test {
         usdc.approve(address(router), amountIn);
 
         bytes memory badCalldata = abi.encodeWithSelector(
-            ReentrantTarget.swap.selector,
-            address(usdc),
-            amountIn,
-            address(usdt),
-            address(badTarget),
-            ""
+            ReentrantTarget.swap.selector, address(usdc), amountIn, address(usdt), address(badTarget), ""
         );
 
         vm.expectRevert(); // Reentrancy Guard will trigger a revert on the nested call
-        router.swap(
-            address(usdc),
-            amountIn,
-            address(usdt),
-            address(badTarget),
-            badCalldata
-        );
+        router.swap(address(usdc), amountIn, address(usdt), address(badTarget), badCalldata);
         vm.stopPrank();
     }
 }

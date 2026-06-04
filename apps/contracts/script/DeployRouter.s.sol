@@ -9,7 +9,7 @@ contract DeployRouterScript is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address feeCollector = vm.envAddress("FEE_COLLECTOR_ADDRESS");
-        
+
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy Implementation
@@ -18,10 +18,8 @@ contract DeployRouterScript is Script {
 
         // 2. Prepare Initialization Data
         // Platform fee is 30 bps (0.3%)
-        bytes memory initData = abi.encodeCall(
-            JahpaySwapRouter.initialize,
-            (vm.addr(deployerPrivateKey), feeCollector, 30)
-        );
+        bytes memory initData =
+            abi.encodeCall(JahpaySwapRouter.initialize, (vm.addr(deployerPrivateKey), feeCollector, 30));
 
         // 3. Deploy Proxy
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);

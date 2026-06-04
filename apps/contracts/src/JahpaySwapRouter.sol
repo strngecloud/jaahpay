@@ -19,7 +19,7 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
 
     address public feeCollector;
     uint256 public platformFeeBps; // e.g., 30 for 0.3%
-    
+
     // Whitelisted addresses allowed to be called by the router (e.g., Mento Broker, Uniswap Router)
     mapping(address => bool) public trustedTargets;
 
@@ -60,11 +60,7 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
      * @param _feeCollector Fee collector address
      * @param _platformFeeBps Platform fee in basis points (e.g., 30 for 0.3%)
      */
-    function initialize(
-        address initialOwner,
-        address _feeCollector,
-        uint256 _platformFeeBps
-    ) initializer public {
+    function initialize(address initialOwner, address _feeCollector, uint256 _platformFeeBps) public initializer {
         __Ownable_init(initialOwner);
         feeCollector = _feeCollector;
         platformFeeBps = _platformFeeBps;
@@ -89,7 +85,7 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
      * @param _feeBps New fee in basis points (max 1000 = 10%)
      */
     function setPlatformFee(uint256 _feeBps) external onlyOwner {
-        require(_feeBps <= 1000, "Fee too high"); 
+        require(_feeBps <= 1000, "Fee too high");
         platformFeeBps = _feeBps;
         emit PlatformFeeUpdated(_feeBps);
     }
@@ -115,45 +111,39 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
      * @param target Address of the DEX router/broker
      * @param data Encoded function call data to execute on the target
      */
-    function swap(
-        address tokenIn,
-        uint256 amountIn,
-        address tokenOut,
-        address target,
-        bytes calldata data
-    ) external payable nonReentrant {
+    function swap(address tokenIn, uint256 amountIn, address tokenOut, address target, bytes calldata data)
+        external
+        payable
+        nonReentrant
+    {
         if (!trustedTargets[target]) revert UntrustedTarget();
         if (amountIn == 0) revert InvalidAmount();
-        
+
         bool isNativeIn = tokenIn == address(0) || tokenIn == CELO_TOKEN;
         bool isNativeOut = tokenOut == address(0) || tokenOut == CELO_TOKEN;
-        
+
         // 1. Receive input tokens
         if (isNativeIn) {
             require(msg.value >= amountIn, "Insufficient msg.value");
         } else {
             // Transfer input tokens from user to this router
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-            
+
             // Approve the target to spend our tokens
             IERC20(tokenIn).safeIncreaseAllowance(target, amountIn);
         }
 
         // 2. Record output token balance before swap
-        uint256 balanceBefore = isNativeOut 
-            ? address(this).balance 
-            : IERC20(tokenOut).balanceOf(address(this));
+        uint256 balanceBefore = isNativeOut ? address(this).balance : IERC20(tokenOut).balanceOf(address(this));
 
         // 3. Execute swap on target
         // We pass along the msg.value if the input is native CELO
-        (bool success, ) = target.call{value: isNativeIn ? msg.value : 0}(data);
+        (bool success,) = target.call{value: isNativeIn ? msg.value : 0}(data);
         if (!success) revert SwapFailed();
 
         // 4. Calculate amount received
-        uint256 balanceAfter = isNativeOut 
-            ? address(this).balance 
-            : IERC20(tokenOut).balanceOf(address(this));
-            
+        uint256 balanceAfter = isNativeOut ? address(this).balance : IERC20(tokenOut).balanceOf(address(this));
+
         uint256 amountOut = balanceAfter - balanceBefore;
         if (amountOut == 0) revert SwapFailed();
 
@@ -164,7 +154,7 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
         // 6. Transfer fee to collector
         if (fee > 0) {
             if (isNativeOut) {
-                (bool feeSuccess, ) = feeCollector.call{value: fee}("");
+                (bool feeSuccess,) = feeCollector.call{value: fee}("");
                 require(feeSuccess, "Fee transfer failed");
             } else {
                 IERC20(tokenOut).safeTransfer(feeCollector, fee);
@@ -173,7 +163,7 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
 
         // 7. Transfer net amount to user
         if (isNativeOut) {
-            (bool outSuccess, ) = msg.sender.call{value: amountOutNet}("");
+            (bool outSuccess,) = msg.sender.call{value: amountOutNet}("");
             require(outSuccess, "User transfer failed");
         } else {
             IERC20(tokenOut).safeTransfer(msg.sender, amountOutNet);
@@ -181,7 +171,7 @@ contract JahpaySwapRouter is Initializable, OwnableUpgradeable, UUPSUpgradeable,
 
         emit SwapExecuted(msg.sender, tokenIn, tokenOut, amountIn, amountOutNet, fee);
     }
-    
+
     // Receive native CELO tokens
     receive() external payable {}
 }

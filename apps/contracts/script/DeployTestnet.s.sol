@@ -13,8 +13,7 @@ contract DeployTestnetScript is Script {
     address public defaultAdmin;
 
     // Environment variables
-    string private constant RPC_URL =
-        "https://alfajores-forno.celo-testnet.org";
+    string private constant RPC_URL = "https://alfajores-forno.celo-testnet.org";
 
     function run() external {
         // Get deployer address from private key

@@ -2,6 +2,10 @@
 cache/
 out/
 lib/
+!lib/.gitkeep
+!lib/forge-std/
+!lib/openzeppelin-contracts/
+!lib/openzeppelin-contracts-upgradeable/
 
 # Dependencies
 node_modules/
