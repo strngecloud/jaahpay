@@ -90,6 +90,12 @@ export const FEE_COLLECTOR_ADDRESS =
   process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS ||
   '0x0000000000000000000000000000000000000000';
 
+/** Address of the JahpaySwapRouter proxy — set in .env */
+export const JAHPAY_ROUTER_ADDRESS =
+  process.env.NEXT_PUBLIC_JAHPAY_ROUTER_ADDRESS ||
+  '0x0000000000000000000000000000000000000000';
+
+
 // ─── ERC-8004 Agent ───────────────────────────────────────────────────────────
 
 export const
