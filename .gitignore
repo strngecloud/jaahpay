@@ -103,4 +103,5 @@ Thumbs.db
 apps/contracts/out/
 apps/contracts/cache/
 apps/contracts/broadcast/
+apps/contracts/lib/
 *.gas-snapshot
