@@ -22,8 +22,25 @@ import {
   UNISWAP_V3_CONTRACTS,
   UNISWAP_POOL_FEE,
   SWAP_CONFIG,
+  JAHPAY_ROUTER_ADDRESS,
 } from '../minipay/constants';
 import type { SwapQuote, SwapTransaction, SwapTokenSymbol } from './usdc-usdt-swap';
+
+const JAHPAY_ROUTER_ABI = [
+  {
+    type: 'function',
+    name: 'swap',
+    inputs: [
+      { name: 'tokenIn', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'target', type: 'address' },
+      { name: 'data', type: 'bytes' },
+    ],
+    stateMutability: 'payable',
+    outputs: [],
+  }
+] as const;
 
 // ─── ABIs (minimal) ──────────────────────────────────────────────────────────
 
@@ -223,7 +240,7 @@ export async function buildUniswapSwapTransaction(
   const amountOutMinimum =
     grossOut - (grossOut * BigInt(slippageBps)) / BigInt(10_000);
 
-  // Build exactInputSingle calldata
+  // Build exactInputSingle calldata for Uniswap, targeting JAHPAY_ROUTER_ADDRESS as recipient
   const swapData = encodeFunctionData({
     abi: SWAP_ROUTER_ABI,
     functionName: 'exactInputSingle',
@@ -232,11 +249,24 @@ export async function buildUniswapSwapTransaction(
         tokenIn: fromAddr,
         tokenOut: toAddr,
         fee: UNISWAP_POOL_FEE,
-        recipient: userAddress as Address,
+        recipient: JAHPAY_ROUTER_ADDRESS as Address,
         amountIn: amountInParsed,
         amountOutMinimum,
         sqrtPriceLimitX96: BigInt(0),
       },
+    ],
+  });
+
+  // Wrap the call for JahpaySwapRouter
+  const routerData = encodeFunctionData({
+    abi: JAHPAY_ROUTER_ABI,
+    functionName: 'swap',
+    args: [
+      fromToken === 'CELO' ? '0x0000000000000000000000000000000000000000' : fromAddr,
+      amountInParsed,
+      toToken === 'CELO' ? '0x0000000000000000000000000000000000000000' : toAddr,
+      UNISWAP_V3_CONTRACTS.SWAP_ROUTER as Address,
+      swapData,
     ],
   });
 
@@ -252,14 +282,14 @@ export async function buildUniswapSwapTransaction(
       address: fromAddr,
       abi: ERC20_ABI,
       functionName: 'allowance',
-      args: [userAddress as Address, UNISWAP_V3_CONTRACTS.SWAP_ROUTER as Address],
+      args: [userAddress as Address, JAHPAY_ROUTER_ADDRESS as Address],
     });
 
     if (BigInt(currentAllowance.toString()) < amountInParsed) {
       const approveData = encodeFunctionData({
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [UNISWAP_V3_CONTRACTS.SWAP_ROUTER as Address, amountInParsed],
+        args: [JAHPAY_ROUTER_ADDRESS as Address, amountInParsed],
       });
       approval = {
         to: fromAddr,
@@ -275,8 +305,8 @@ export async function buildUniswapSwapTransaction(
     approval,
     swap: {
       params: {
-        to: UNISWAP_V3_CONTRACTS.SWAP_ROUTER as Address,
-        data: swapData,
+        to: JAHPAY_ROUTER_ADDRESS as Address,
+        data: routerData,
         ...(isFromCelo ? { value: amountInParsed } : {}),
       },
     },

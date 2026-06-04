@@ -4,9 +4,49 @@
  */
 
 import { Mento, ChainId, deadlineFromMinutes } from '@mento-protocol/mento-sdk';
-import { parseUnits, formatUnits } from 'viem';
-import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG } from '../minipay/constants';
+import { parseUnits, formatUnits, encodeFunctionData, createPublicClient, http, type Address } from 'viem';
+import { celo } from 'viem/chains';
+import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG, JAHPAY_ROUTER_ADDRESS } from '../minipay/constants';
 import { getUniswapQuote, buildUniswapSwapTransaction } from './uniswap-swap';
+
+const JAHPAY_ROUTER_ABI = [
+  {
+    type: 'function',
+    name: 'swap',
+    inputs: [
+      { name: 'tokenIn', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'target', type: 'address' },
+      { name: 'data', type: 'bytes' },
+    ],
+    stateMutability: 'payable',
+    outputs: [],
+  }
+] as const;
+
+const ERC20_ABI = [
+  {
+    name: 'allowance',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,21 +237,69 @@ export async function buildSwapTransaction(
   const amountInParsed = parseUnits(amountIn, fromDecimals);
   const slippageTolerance = slippageBps / 100; // SDK takes percentage
 
-  const { approval, swap } = await mento.swap.buildSwapTransaction(
+  // sender = JAHPAY_ROUTER_ADDRESS because the router holds the tokens
+  // recipient = JAHPAY_ROUTER_ADDRESS so it receives output and can deduct fees
+  const { swap: mentoSwap } = await mento.swap.buildSwapTransaction(
     fromAddr,
     toAddr,
     amountInParsed,
-    userAddress,
-    userAddress,
+    JAHPAY_ROUTER_ADDRESS,
+    JAHPAY_ROUTER_ADDRESS,
     {
       slippageTolerance,
       deadline: deadlineFromMinutes(SWAP_CONFIG.DEADLINE_MINUTES),
     }
   );
 
+
+  const routerData = encodeFunctionData({
+    abi: JAHPAY_ROUTER_ABI,
+    functionName: 'swap',
+    args: [
+      fromAddr as Address,
+      amountInParsed,
+      toAddr as Address,
+      mentoSwap.params.to as Address,
+      mentoSwap.params.data as `0x${string}`,
+    ],
+  });
+
+  // Build approval tx if swapping FROM an ERC-20
+  let approval: {
+    to: Address;
+    data: `0x${string}`;
+  } | null = null;
+
+  if (fromToken !== 'CELO') {
+    const client = createPublicClient({ chain: celo, transport: http() });
+    const currentAllowance = await client.readContract({
+      address: fromAddr as Address,
+      abi: ERC20_ABI,
+      functionName: 'allowance',
+      args: [userAddress as Address, JAHPAY_ROUTER_ADDRESS as Address],
+    });
+
+    if (BigInt(currentAllowance.toString()) < amountInParsed) {
+      const approveData = encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [JAHPAY_ROUTER_ADDRESS as Address, amountInParsed],
+      });
+      approval = {
+        to: fromAddr as Address,
+        data: approveData,
+      };
+    }
+  }
+
   return {
-    approval: approval || null,
-    swap,
+    approval,
+    swap: {
+      params: {
+        to: JAHPAY_ROUTER_ADDRESS as Address,
+        data: routerData,
+      },
+    },
     quote,
   };
 }
