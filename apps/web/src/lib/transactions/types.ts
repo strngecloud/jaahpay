@@ -1,4 +1,16 @@
-import { ProviderQuote } from '../providers/types';
+// ProviderQuote fields inlined (providers module removed in swap-only refactor)
+export interface ProviderQuote {
+  fromToken?: string;
+  toToken?: string;
+  fromAmount: string;
+  toAmount: string;
+  provider?: string;
+  rate?: number;
+  fee?: string;
+  minAmount?: string;
+  maxAmount?: string;
+  estimatedTime?: string;
+}
 
 export enum TransactionStatus {
   PENDING = 'pending',

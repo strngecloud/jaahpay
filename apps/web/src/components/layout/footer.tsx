@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { SiteConfig } from '@/config/site';
-import { Twitter, Github, Mail } from 'lucide-react';
-import Image from 'next/image';
+import Link from "next/link";
+import { SiteConfig } from "@/config/site";
+import { X, GitBranch, Mail } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -15,10 +15,10 @@ export function Footer() {
               width={150}
               height={40}
               className="rounded-lg"
-              priority
+              style={{ height: "auto" }}
             />
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-              Seamless fiat to crypto conversions with the best rates and lowest fees.
+              Oracle-priced Celo ↔ USDC ↔ USDT swaps on Celo powered by Mento Protocol.
             </p>
             <div className="flex items-center space-x-4 pt-2">
               <a
@@ -28,7 +28,7 @@ export function Footer() {
                 className="text-gray-400 hover:text-brand-blue transition-colors"
                 aria-label="Twitter"
               >
-                <Twitter className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </a>
               <a
                 href={SiteConfig.links.github}
@@ -37,7 +37,7 @@ export function Footer() {
                 className="text-gray-400 hover:text-brand-blue transition-colors"
                 aria-label="GitHub"
               >
-                <Github className="h-5 w-5" />
+                <GitBranch className="h-5 w-5" />
               </a>
               <a
                 href="mailto:hello@jahpay.app"
@@ -51,22 +51,16 @@ export function Footer() {
 
           <div className="grid grid-cols-2 gap-8 md:col-span-2 md:grid-cols-3">
             <div>
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-6">Product</h3>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-6">
+                Product
+              </h3>
               <ul className="space-y-4">
                 <li>
                   <Link
-                    href="/buy"
+                    href="/"
                     className="text-gray-400 hover:text-brand-blue text-sm transition-colors"
                   >
-                    Buy Crypto
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/sell"
-                    className="text-gray-400 hover:text-brand-blue text-sm transition-colors"
-                  >
-                    Sell Crypto
+                    Swap
                   </Link>
                 </li>
                 <li>
@@ -81,7 +75,9 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-6">Company</h3>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-6">
+                Company
+              </h3>
               <ul className="space-y-4">
                 <li>
                   <Link
@@ -111,7 +107,9 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-6">Support</h3>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-6">
+                Support
+              </h3>
               <ul className="space-y-4">
                 <li>
                   <Link
@@ -152,7 +150,8 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-gray-800">
           <p className="text-center text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} {SiteConfig.name}. All rights reserved.
+            &copy; {new Date().getFullYear()} {SiteConfig.name}. All rights
+            reserved.
           </p>
         </div>
       </div>

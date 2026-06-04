@@ -1,337 +1,230 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { ArrowDown, ArrowRight, Loader2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useState, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Shield,
+  Zap,
+  ExternalLink,
+} from "lucide-react";
+import { useChainId } from "wagmi";
+import { GlassCard } from "@/components/ui/glass-card";
+import { SwapPanel } from "../main-app/panels/swap-panel";
+import { AIAgentPanel } from "./ai-agent-panel";
+import {
+  TransactionHistoryIconButton,
+  TransactionHistorySheet,
+} from "./transaction-history-sheet";
+import type { AgentRecommendation } from "@/lib/agent/erc8004-agent";
+import type { SwapTokenSymbol } from "@/lib/swap/usdc-usdt-swap";
+import { isCeloPair } from "@/lib/swap/usdc-usdt-swap";
 
-import { TokenOption, TokenSelector } from './token-selector';
-import { AmountInput } from './amount-input';
-import { TokenInfo, SwapDirection, SwapFormData, Currency, Crypto } from 'types/swap';
-import { CURRENCIES, CRYPTOS, PROVIDERS } from '@/config/site';
-import { Button } from '../ui/button';
-import { toast } from '../ui/use-toast';
+type SwapStatus = "idle" | "loading" | "success" | "error";
 
-// Mock tokens - in a real app, these would come from your token list or API
-const MOCK_TOKENS: Record<string, TokenInfo> = {
-  CELO: {
-    symbol: 'CELO',
-    name: 'Celo Native',
-    icon: '/tokens/celo.png',
-    balance: '0.00',
-    usdValue: 0,
-  },
-  cUSD: {
-    symbol: 'cUSD',
-    name: 'Celo Dollar',
-    icon: '/tokens/cusd.png',
-    balance: '0.00',
-    usdValue: 0,
-  },
-  cEUR: {
-    symbol: 'cEUR',
-    name: 'Celo Euro',
-    icon: '/tokens/ceur.png',
-    balance: '0.00',
-    usdValue: 0,
-  },
-  USDC: {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    icon: '/tokens/usdc.png',
-    balance: '0.00',
-    usdValue: 0,
-  },
-};
+interface SwapState {
+  status: SwapStatus;
+  message?: string;
+  txHash?: string;
+}
 
-// Form validation schema
-const swapFormSchema = z.object({
-  fromAmount: z.string().min(1, 'Amount is required'),
-  toAmount: z.string().min(1, 'Amount is required'),
-  fromToken: z.string().min(1, 'Token is required'),
-  toToken: z.string().min(1, 'Token is required'),
-});
-
-type SwapFormValues = z.infer<typeof swapFormSchema>;
+function getExplorerUrl(chainId: number, txHash: string) {
+  if (chainId === 11142220) {
+    return `https://celo-sepolia.blockscout.com/tx/${txHash}`;
+  }
+  return `https://celoscan.io/tx/${txHash}`;
+}
 
 export function SwapInterface() {
-  const [direction, setDirection] = useState<SwapDirection>('buy');
-  const [isSwitching, setIsSwitching] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isTokenSelectorOpen, setIsTokenSelectorOpen] = useState<'from' | 'to' | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [availableTokens, setAvailableTokens] = useState<Record<string, TokenInfo>>(MOCK_TOKENS);
+  const chainId = useChainId();
+  const [mounted, setMounted] = useState(false);
+  const [swapState, setSwapState] = useState<SwapState>({ status: "idle" });
+  const [agentRec, setAgentRec] = useState<AgentRecommendation | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [chatSwapParams, setChatSwapParams] = useState<{
+    amount: string;
+    fromToken: SwapTokenSymbol;
+    toToken: SwapTokenSymbol;
+    slippageBps?: number;
+  } | null>(null);
+  const [currentFromToken, setCurrentFromToken] = useState<SwapTokenSymbol>('USDC');
+  const [currentToToken, setCurrentToToken] = useState<SwapTokenSymbol>('USDT');
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const { control, watch, setValue, handleSubmit, formState: { errors } } = useForm<SwapFormValues>({
-    resolver: zodResolver(swapFormSchema),
-    defaultValues: {
-      fromAmount: '',
-      toAmount: '',
-      fromToken: 'NGN',
-      toToken: 'cUSD',
+  const handleStart = useCallback(
+    () => setSwapState({ status: "loading" }),
+    [],
+  );
+
+  const handleSuccess = useCallback((txHash?: string) => {
+    setSwapState({
+      status: "success",
+      txHash,
+      message: "Swap completed successfully!",
+    });
+    setTimeout(() => setSwapState({ status: "idle" }), 6000);
+  }, []);
+
+  const handleError = useCallback((error: string) => {
+    setSwapState({ status: "error", message: error });
+    setTimeout(() => setSwapState({ status: "idle" }), 8000);
+  }, []);
+
+  const handlePrepareSwap = useCallback(
+    (payload: {
+      amount: string;
+      fromToken: SwapTokenSymbol;
+      toToken: SwapTokenSymbol;
+      slippageBps?: number;
+    }) => {
+      setChatSwapParams(payload);
+      setCurrentFromToken(payload.fromToken);
+      setCurrentToToken(payload.toToken);
     },
-  });
+    [],
+  );
 
-  const fromToken = watch('fromToken');
-  const toToken = watch('toToken');
-  const fromAmount = watch('fromAmount');
-  const toAmount = watch('toAmount');
-
-  // Toggle between buy/sell
-  const toggleDirection = useCallback(() => {
-    setIsSwitching(true);
-    setDirection(prev => prev === 'buy' ? 'sell' : 'buy');
-    
-    // Swap tokens
-    setValue('fromToken', toToken);
-    setValue('toToken', fromToken);
-    
-    // Small delay for animation
-    setTimeout(() => setIsSwitching(false), 300);
-  }, [fromToken, toToken, setValue]);
-
-  // Handle token selection
-  const handleTokenSelect = useCallback((tokenSymbol: string) => {
-    if (isTokenSelectorOpen === 'from') {
-      setValue('fromToken', tokenSymbol);
-    } else if (isTokenSelectorOpen === 'to') {
-      setValue('toToken', tokenSymbol);
-    }
-    setIsTokenSelectorOpen(null);
-  }, [isTokenSelectorOpen, setValue]);
-
-  // Handle max button click
-  const handleMaxClick = useCallback(() => {
-    // In a real app, this would use the user's actual balance
-    const maxBalance = '1000.00'; // Mock balance
-    setValue('fromAmount', maxBalance);
-  }, [setValue]);
-
-  // Handle swap submission
-  const onSubmit = async (data: SwapFormValues) => {
-    try {
-      setIsLoading(true);
-      
-      // In a real app, this would call your swap API
-      console.log('Submitting swap:', {
-        from: data.fromToken,
-        to: data.toToken,
-        amount: data.fromAmount,
-        direction,
-        provider: selectedProvider,
-      });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: 'Swap successful',
-        description: `Successfully swapped ${data.fromAmount} ${data.fromToken} to ${data.toAmount} ${data.toToken}`,
-      });
-      
-    } catch (error) {
-      console.error('Swap error:', error);
-      toast({
-        title: "We couldn’t process that",
-        description: "Nothing was charged. Try again in a moment.",
-        type: 'error',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Get token info by symbol
-  const getTokenInfo = useCallback((symbol: string): TokenInfo => {
-    const currencyToken = Object.values(CURRENCIES).find(c => c.code === symbol);
-    const token = availableTokens[symbol];
-    
-    if (token) return token;
-
-    if (currencyToken) {
-      return {
-        symbol: currencyToken.code,
-        name: currencyToken.name,
-        icon: '',
-        balance: '0.00',
-        usdValue: 0
-      };
-    }
-
-    // Fallback for unknown tokens
-    return {
-      symbol,
-      name: symbol,
-      icon: '',
-      balance: '0.00',
-      usdValue: 0
-    };
-  }, [availableTokens]);
+  if (!mounted) {
+    return (
+      <div className="relative z-10 w-full max-w-[420px] mx-auto space-y-3">
+        <GlassCard className="p-5 md:p-6" glow hover={false}>
+          <div className="h-64 flex items-center justify-center text-white/40">
+            Loading...
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="glass rounded-2xl p-6 shadow-xl">
-        <h2 className="text-xl font-bold mb-6 text-center">
-          {direction === 'buy' ? 'Buy Crypto' : 'Sell Crypto'}
-        </h2>
-        
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4">
+    <div className="relative z-10 w-full max-w-[420px] mx-auto space-y-3">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+      >
+        <GlassCard className="p-5 md:p-6" glow hover={true} gradient={true}>
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <label className="mb-2 block text-sm font-medium text-text-secondary">
-                {direction === 'buy' ? 'You pay' : 'You receive'}
-              </label>
-              <div className="relative">
-                <div className="flex items-center space-x-3">
-                  <Controller
-                    name="fromAmount"
-                    control={control}
-                    render={({ field }) => (
-                      <AmountInput
-                        token={getTokenInfo(fromToken)}
-                        value={field.value || ''}
-                        onAmountChange={field.onChange}
-                        onMaxClick={direction === 'sell' ? handleMaxClick : undefined}
-                        error={errors.fromAmount?.message}
-                        autoFocus
-                        className="flex-1"
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="toToken"
-                    control={control}
-                    render={({ field: { value } }) => {
-                      const token = getTokenInfo(value || '');
-                      return (
-                        <TokenSelector
-                          token={token}
-                          onSelect={() => setIsTokenSelectorOpen('to')}
-                          className="w-40"
-                        />
-                      );
-                    }}
-                  />
-                </div>
-              </div>
+              <h2 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">Swap Tokens</h2>
             </div>
-            
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={toggleDirection}
-                disabled={isSwitching}
-                className={cn(
-                  'p-2 rounded-full bg-bg-tertiary/50 border border-border/40',
-                  'transition-transform hover:scale-105 active:scale-95',
-                  isSwitching ? 'opacity-50' : ''
-                )}
-              >
-                {isSwitching ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <ArrowDown className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-            
-            <div>
-              <label className="mb-2 block text-sm font-medium text-text-secondary">
-                {direction === 'buy' ? 'You receive' : 'You pay'}
-              </label>
-              <div className="flex items-center space-x-3">
-                <Controller
-                  name="toAmount"
-                  control={control}
-                    render={({ field: { value, onChange, onBlur } }) => (
-                    <AmountInput
-                      token={getTokenInfo(toToken)}
-                        value={value || ''}
-                        onAmountChange={onChange}
-                      onMaxClick={direction === 'buy' ? handleMaxClick : undefined}
-                      error={errors.toAmount?.message}
-                      className="flex-1"
-                      disabled={direction === 'buy'}
-                    />
-                  )}
-                />
-                <Controller
-                  name="toToken"
-                  control={control}
-                    render={({ field: { value } }) => {
-                      return (
-                        <TokenSelector
-                          token={getTokenInfo(toToken)}
-                          onSelect={() => setIsTokenSelectorOpen('to')}
-                          className="w-40"
-                        />
-                      );
-                    }}
-                />
-              </div>
-            </div>
-            
-            {/* Exchange rate and provider info */}
-            <div className="rounded-lg bg-bg-tertiary/30 p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-text-secondary">Exchange rate</span>
-                <span className="font-medium">1 {fromToken} = 0.00042 {toToken}</span>
-              </div>
-              <div className="mt-1 flex justify-between">
-                <span className="text-text-secondary">Provider</span>
-                <span className="font-medium">
-                  {selectedProvider || 'Select a provider'}
+            <div className="flex items-center gap-2">
+              <TransactionHistoryIconButton
+                onClick={() => setHistoryOpen(true)}
+              />
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-brand-green/10 border border-brand-green/30 shadow-[0_0_10px_rgba(38,161,123,0.15)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-green shadow-[0_0_5px_rgba(38,161,123,0.8)] animate-pulse" />
+                <span className="text-[11px] font-bold text-brand-green tracking-wide">
+                  LIVE
                 </span>
               </div>
             </div>
-            
-            <Button
-              type="submit"
-              className="w-full h-12 text-base font-medium"
-              disabled={isLoading || !selectedProvider}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                `Swap ${fromToken} to ${toToken}`
-              )}
-            </Button>
           </div>
-        </form>
-      </div>
-      
-      {/* Token selector modal */}
-      {isTokenSelectorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-bg-secondary p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-medium">Select a token</h3>
-              <button
-                onClick={() => setIsTokenSelectorOpen(null)}
-                className="rounded-full p-1 hover:bg-bg-tertiary/50"
+
+          <AnimatePresence mode="wait">
+            {swapState.status === "success" && (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="rounded-xl bg-brand-green/[0.08] border border-brand-green/25 flex items-start gap-3 px-4 py-3"
               >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {Object.entries(availableTokens).map(([symbol, token]) => (
-                <TokenOption
-                  key={symbol}
-                  token={token}
-                  isSelected={symbol === (isTokenSelectorOpen === 'from' ? fromToken : toToken)}
-                  onSelect={() => handleTokenSelect(symbol)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+                <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-brand-green">
+                    {swapState.message}
+                  </p>
+                  {swapState.txHash && (
+                    <a
+                      href={getExplorerUrl(chainId, swapState.txHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-brand-green/60 hover:text-brand-green mt-0.5 font-mono transition-colors"
+                    >
+                      <span className="truncate">
+                        {swapState.txHash.slice(0, 20)}...
+                      </span>
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                    </a>
+                  )}
+                </div>
+              </motion.div>
+            )}
+            {swapState.status === "error" && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="rounded-xl bg-red-500/[0.08] border border-red-500/25 flex items-start gap-3 px-4 py-3"
+              >
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-400">
+                    Swap failed
+                  </p>
+                  <p className="text-xs text-red-400/60 mt-0.5">
+                    {swapState.message}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <SwapPanel
+            onTransactionStart={handleStart}
+            onTransactionSuccess={handleSuccess}
+            onTransactionError={handleError}
+            isLoading={swapState.status === "loading"}
+            onRecommendation={setAgentRec}
+            externalSwapParams={chatSwapParams}
+          />
+
+          {/* <div className="grid grid-cols-2 gap-2 mt-5 pt-5 border-t border-white/[0.05]">
+            {[
+              {
+                icon: <Shield className="w-3.5 h-3.5 text-brand-green" />,
+                text: "Non-Custodial",
+              },
+              isCeloPair(currentFromToken, currentToToken)
+                ? {
+                    icon: <Zap className="w-3.5 h-3.5 text-brand-blue" />,
+                    text: "Uniswap V3",
+                  }
+                : {
+                    icon: <Zap className="w-3.5 h-3.5 text-brand-blue" />,
+                    text: "Mento Oracle",
+                  },
+            ].map(({ icon, text }) => (
+              <div
+                key={text}
+                className="flex items-center gap-2 text-xs text-white/35"
+              >
+                {icon}
+                <span>{text}</span>
+              </div>
+            ))}
+          </div> */}
+        </GlassCard>
+      </motion.div>
+
+      <AIAgentPanel
+        recommendation={agentRec}
+        fromToken={currentFromToken}
+        toToken={currentToToken}
+        onPrepareSwap={handlePrepareSwap}
+      />
+
+      <TransactionHistorySheet
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+      />
     </div>
   );
 }

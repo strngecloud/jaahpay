@@ -1,8 +1,10 @@
 import React from 'react';
+type TokenInfo = { symbol: string; name: string; decimals: number; address: string; color?: string; logo?: string; icon?: string; balance?: string; usdValue?: number; };
+
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { TokenInfo } from 'types/swap';
+
 import Image from 'next/image';
 
 interface TokenSelectorProps {
