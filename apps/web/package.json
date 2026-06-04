@@ -9,6 +9,7 @@
     "start": "next start",
     "type-check": "tsc --noEmit",
     "deploy:agent": "tsx scripts/deploy-agent.ts",
+    "test:swap": "tsx scripts/test-swap-flow.ts",
     "clean": "tsx scripts/clean.ts"
   },
   "dependencies": {
