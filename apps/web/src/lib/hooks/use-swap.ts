@@ -151,7 +151,7 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
   }, [fromToken, toToken, quote]);
 
   const executeSwap = useCallback(async () => {
-    if (!quote || !address || !walletClient) return null;
+    if (!quote || !address || !walletClient || !publicClient) return null;
 
     // Final balance check before execution
     if (balance && parseFloat(fromAmount) > parseFloat(balance)) {
@@ -172,7 +172,8 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
       );
 
       if (approval) {
-        await walletClient.sendTransaction(approval as Parameters<typeof walletClient.sendTransaction>[0]);
+        const approvalHash = await walletClient.sendTransaction(approval as Parameters<typeof walletClient.sendTransaction>[0]);
+        await publicClient!.waitForTransactionReceipt({ hash: approvalHash });
       }
 
       const txHash = await walletClient.sendTransaction(
