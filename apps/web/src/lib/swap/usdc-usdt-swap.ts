@@ -237,14 +237,17 @@ export async function buildSwapTransaction(
   const amountInParsed = parseUnits(amountIn, fromDecimals);
   const slippageTolerance = slippageBps / 100; // SDK takes percentage
 
-  // sender = JAHPAY_ROUTER_ADDRESS because the router holds the tokens
-  // recipient = JAHPAY_ROUTER_ADDRESS so it receives output and can deduct fees
+  // For stablecoin swaps via Mento, we need the router to be the sender
+  // so it can deduct fees from the output. However, Mento's SDK generates
+  // transactions that expect the token holder to execute the swap.
+  // The fix: keep sender as router but use router as recipient to capture output
+  // The router contract will approve itself to receive Mento's calls
   const { swap: mentoSwap } = await mento.swap.buildSwapTransaction(
     fromAddr,
     toAddr,
     amountInParsed,
-    JAHPAY_ROUTER_ADDRESS,
-    JAHPAY_ROUTER_ADDRESS,
+    userAddress as Address, // Mento needs actual token owner for the internal swap
+    JAHPAY_ROUTER_ADDRESS, // But output goes to router so it can deduct fees
     {
       slippageTolerance,
       deadline: deadlineFromMinutes(SWAP_CONFIG.DEADLINE_MINUTES),
