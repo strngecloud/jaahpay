@@ -26,7 +26,7 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
-  const { createTransaction } = useTransactions();
+  const { createTransaction, updateTransaction } = useTransactions();
 
   const [fromToken, setFromTokenState] = useState<SwapTokenSymbol>("USDC");
   const [toToken, setToTokenState] = useState<SwapTokenSymbol>("USDT");
@@ -161,6 +161,9 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
     }
 
     setIsSwapping(true);
+    let txHash: string | null = null;
+    let transaction = null;
+
     try {
       const { approval, swap } = await buildSwapTransaction(
         fromToken,
@@ -176,13 +179,14 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
         await publicClient!.waitForTransactionReceipt({ hash: approvalHash });
       }
 
-      const txHash = await walletClient.sendTransaction(
+      txHash = await walletClient.sendTransaction(
         swap.params as Parameters<typeof walletClient.sendTransaction>[0],
       );
 
       const providerName = isCeloPair(fromToken, toToken) ? "Uniswap V3" : "Mento Protocol";
 
-      createTransaction(
+      // Create transaction in PENDING status
+      transaction = createTransaction(
         TransactionType.SWAP,
         {
           type: TransactionType.SWAP,
@@ -210,34 +214,11 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
           feeCurrency: toToken,
           txHash,
         },
-        TransactionStatus.COMPLETED,
+        TransactionStatus.PENDING,
       );
 
-      try {
-        await fetch("/api/transactions/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userAddress: address,
-            type: "swap",
-            fromToken,
-            toToken,
-            amountIn: fromAmount,
-            amountOut: quote.amountOutNet,
-            platformFee: quote.platformFee,
-            txHash,
-            status: "success",
-          }),
-        });
-      } catch {
-        // localStorage already persisted via createTransaction
-      }
-
-      await fetch("/api/agent/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote, txHash, success: true }),
-      }).catch(() => { });
+      // Start verification in background - don't await this
+      verifyTransactionOnChain(transaction.id, txHash, quote, address);
 
       setFromAmount("");
       setQuote(null);
@@ -246,10 +227,21 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
       const categorized = categorizeError(err);
       logError('Swap Execution', err, { fromToken, toToken, fromAmount, quote });
 
+      // Save transaction as failed if it was created
+      if (transaction) {
+        updateTransaction(transaction.id, {
+          status: TransactionStatus.FAILED,
+          error: {
+            code: 'EXECUTION_FAILED',
+            message: categorized.userMessage,
+          },
+        });
+      }
+
       await fetch("/api/agent/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote, txHash: "", success: false }),
+        body: JSON.stringify({ quote, txHash: txHash || "", success: false }),
       }).catch(() => { });
 
       throw new Error(categorized.userMessage);
@@ -267,8 +259,108 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
     slippageBps,
     chainId,
     createTransaction,
+    updateTransaction,
     balance,
+    publicClient,
   ]);
+
+  // Background function to verify transaction on-chain
+  const verifyTransactionOnChain = useCallback(async (
+    transactionId: string,
+    txHash: string,
+    quote: SwapQuote,
+    userAddress: string,
+  ) => {
+    if (!publicClient) return;
+
+    try {
+      // Update to PROCESSING
+      updateTransaction(transactionId, {
+        status: TransactionStatus.PROCESSING,
+      });
+
+      // Poll for transaction receipt (with timeout)
+      let receipt = null;
+      let attempts = 0;
+      const maxAttempts = 120; // 2 minutes with 1 second intervals
+
+      while (attempts < maxAttempts) {
+        try {
+          receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+          if (receipt) break;
+        } catch {
+          // Receipt not available yet, continue polling
+        }
+
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      if (!receipt) {
+        throw new Error('Transaction receipt not found after 2 minutes');
+      }
+
+      // Check if transaction was successful
+      if (receipt.status === 'success') {
+        updateTransaction(transactionId, {
+          status: TransactionStatus.COMPLETED,
+        });
+
+        // Save to database
+        try {
+          await fetch("/api/transactions/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userAddress,
+              type: "swap",
+              fromToken,
+              toToken,
+              amountIn: quote.fromToken,
+              amountOut: quote.amountOutNet,
+              platformFee: quote.platformFee,
+              txHash,
+              status: "success",
+            }),
+          });
+        } catch (error) {
+          console.error('Failed to save transaction to database:', error);
+        }
+
+        // Send success feedback
+        await fetch("/api/agent/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quote, txHash, success: true }),
+        }).catch(() => { });
+      } else {
+        // Transaction failed on-chain
+        updateTransaction(transactionId, {
+          status: TransactionStatus.FAILED,
+          error: {
+            code: 'ON_CHAIN_FAILED',
+            message: 'Transaction failed on blockchain',
+          },
+        });
+
+        await fetch("/api/agent/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quote, txHash, success: false }),
+        }).catch(() => { });
+      }
+    } catch (error) {
+      console.error('Error verifying transaction on-chain:', error);
+
+      updateTransaction(transactionId, {
+        status: TransactionStatus.FAILED,
+        error: {
+          code: 'VERIFICATION_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
+  }, [publicClient, fromToken, toToken, updateTransaction]);
 
   const canSwap =
     isConnected &&
