@@ -33,6 +33,11 @@ contract DeployRouterScript is Script {
         router.setTrustedTarget(mentoBroker, true);
         console.log("Whitelisted Mento Broker:", mentoBroker);
 
+        // Mento V3 Router (Mainnet)
+        address mentoV3Router = 0x4861840C2EfB2b98312B0aE34d86fD73E8f9B6f6;
+        router.setTrustedTarget(mentoV3Router, true);
+        console.log("Whitelisted Mento V3 Router:", mentoV3Router);
+
         // Uniswap V3 SwapRouter (Mainnet)
         address uniswapV3Router = 0x5615CDAb10dc425a742d643d949a7F474C01abc4;
         router.setTrustedTarget(uniswapV3Router, true);
