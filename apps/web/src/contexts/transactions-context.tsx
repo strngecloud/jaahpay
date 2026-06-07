@@ -14,6 +14,7 @@ import {
   TransactionType,
   TransactionFilters,
   TransactionStats,
+  TransactionUpdate,
 } from "@/lib/transactions/types";
 import { TransactionService } from "@/lib/transactions/service";
 
@@ -32,7 +33,7 @@ interface TransactionsContextType {
   ) => Transaction;
   updateTransaction: (
     id: string,
-    update: Omit<Transaction, "id">,
+    update: Omit<TransactionUpdate, "id">,
   ) => Transaction | null;
   retryTransaction: (
     id: string,
@@ -192,7 +193,7 @@ export function TransactionsProvider({
   );
 
   const updateTransaction = useCallback(
-    (id: string, update: Omit<Transaction, "id">) => {
+    (id: string, update: Omit<TransactionUpdate, "id">) => {
       try {
         const updatedTx = service.updateTransaction(id, update);
         if (updatedTx) {
@@ -289,10 +290,10 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
 
   const statusKey = Array.isArray(filters.status)
     ? filters.status.join(",")
-    : filters.status ?? "";
+    : (filters.status ?? "");
   const typeKey = Array.isArray(filters.type)
     ? filters.type.join(",")
-    : filters.type ?? "";
+    : (filters.type ?? "");
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter((tx) => {
