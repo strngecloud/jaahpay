@@ -246,7 +246,7 @@ export async function buildSwapTransaction(
     fromAddr,
     toAddr,
     amountInParsed,
-    userAddress as Address, // Mento needs actual token owner for the internal swap
+    JAHPAY_ROUTER_ADDRESS as Address, // Mento needs the router (the token owner at execution time) for the internal swap
     JAHPAY_ROUTER_ADDRESS, // But output goes to router so it can deduct fees
     {
       slippageTolerance,
