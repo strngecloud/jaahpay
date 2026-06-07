@@ -234,6 +234,7 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
           error: {
             code: 'EXECUTION_FAILED',
             message: categorized.userMessage,
+            retryable: true,
           },
         });
       }
@@ -340,6 +341,7 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
           error: {
             code: 'ON_CHAIN_FAILED',
             message: 'Transaction failed on blockchain',
+            retryable: true,
           },
         });
 
@@ -357,6 +359,7 @@ export function useSwap(onRecommendation?: (rec: AgentRecommendation) => void) {
         error: {
           code: 'VERIFICATION_ERROR',
           message: error instanceof Error ? error.message : 'Unknown error',
+          retryable: false,
         },
       });
     }
