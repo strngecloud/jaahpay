@@ -1,10 +1,12 @@
 packages:
   - 'apps/*'
 allowBuilds:
+  '@nestjs/core': false
   '@sentry/cli': false
   bufferutil: false
   esbuild: false
   keccak: false
+  msgpackr-extract: false
   protobufjs: false
   sharp: false
   unrs-resolver: false
