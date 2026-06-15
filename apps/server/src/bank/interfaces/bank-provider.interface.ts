@@ -2,6 +2,7 @@ import {
     BankTransferRequest,
     BankTransferResponse,
     BankAccountValidation,
+    BankInfo,
 } from '../../common/types/spend.types';
 
 export interface IBankProvider {
@@ -37,4 +38,9 @@ export interface IBankProvider {
      * Check if the provider is available
      */
     isAvailable(): Promise<boolean>;
+
+    /**
+     * List supported Nigerian banks
+     */
+    listBanks(): Promise<BankInfo[]>;
 }

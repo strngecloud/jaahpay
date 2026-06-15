@@ -8,6 +8,7 @@ import {
     BankTransferResponse,
     BankAccountValidation,
     BankProvider,
+    BankInfo,
 } from '../../common/types/spend.types';
 import { BankApiException } from '../../common/exceptions/custom.exceptions';
 
@@ -169,6 +170,32 @@ export class PaystackProvider implements IBankProvider {
         } catch (error) {
             this.logger.warn('Paystack provider is not available');
             return false;
+        }
+    }
+
+    async listBanks(): Promise<BankInfo[]> {
+        try {
+            const response = await firstValueFrom(
+                this.httpService.get(`${this.apiUrl}/bank?currency=NGN`, {
+                    headers: {
+                        Authorization: `Bearer ${this.secretKey}`,
+                    },
+                    timeout: 15000,
+                }),
+            );
+
+            const banks: BankInfo[] = (response.data.data || [])
+                .filter((b: { code?: string; name?: string }) => b.code && b.name)
+                .map((b: { code: string; name: string; slug?: string }) => ({
+                    code: b.code,
+                    name: b.name,
+                    slug: b.slug,
+                }));
+
+            return banks.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (error: any) {
+            this.logger.error('Paystack list banks failed:', error.message);
+            throw new BankApiException('Paystack', 'Failed to list banks', error);
         }
     }
 }
