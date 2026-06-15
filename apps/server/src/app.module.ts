@@ -37,7 +37,13 @@ import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
         username: configService.get('DATABASE_USERNAME'),
         password: configService.get('DATABASE_PASSWORD'),
         database: configService.get('DATABASE_NAME'),
-        entities: [SpendEntity, BankApiLogEntity, UserSpendLimitEntity, WebhookLogEntity, LedgerEntryEntity],
+        entities: [
+          SpendEntity,
+          BankApiLogEntity,
+          UserSpendLimitEntity,
+          WebhookLogEntity,
+          LedgerEntryEntity,
+        ],
         synchronize: configService.get('DATABASE_SYNCHRONIZE') === 'true',
         logging: configService.get('DATABASE_LOGGING') === 'true',
       }),
@@ -65,4 +71,4 @@ import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

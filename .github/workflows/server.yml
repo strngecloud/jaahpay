@@ -37,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint server
-        run: pnpm --filter @jahpay/server lint
+        run: pnpm --filter @jahpay/server lint --no-cache
 
   type-check:
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check server
-        run: pnpm --filter @jahpay/server type-check
+        run: pnpm --filter @jahpay/server type-check --no-cache
 
   build:
     runs-on: ubuntu-latest
@@ -84,7 +84,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build server
-        run: pnpm --filter @jahpay/server build
+        run: pnpm --filter @jahpay/server build --no-cache
 
   test:
     runs-on: ubuntu-latest
@@ -133,7 +133,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm --filter @jahpay/server test:cov
+        run: pnpm --filter @jahpay/server test:cov --no-cache
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           REDIS_URL: redis://localhost:6379

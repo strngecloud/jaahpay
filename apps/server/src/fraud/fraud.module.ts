@@ -5,8 +5,8 @@ import { SpendEntity } from '../database/entities/spend.entity';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([SpendEntity]), RedisModule],
-    providers: [FraudService],
-    exports: [FraudService],
+  imports: [TypeOrmModule.forFeature([SpendEntity]), RedisModule],
+  providers: [FraudService],
+  exports: [FraudService],
 })
-export class FraudModule { }
+export class FraudModule {}
