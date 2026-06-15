@@ -15,7 +15,7 @@ function SwapWidgetSkeleton() {
 }
 
 export const SwapInterface = dynamic(
-  () => import("./swap-interface").then((m) => m.SwapInterface),
+  () => import("@/components/spend/app-interface").then((m) => m.AppInterface),
   {
     ssr: false,
     loading: () => <SwapWidgetSkeleton />,
