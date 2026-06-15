@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     createPublicClient,
@@ -43,6 +43,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
 
     constructor(
         private readonly configService: ConfigService,
+        @Inject(forwardRef(() => SpendProcessorService))
         private readonly spendProcessor: SpendProcessorService,
     ) {
         const celoRpcUrl = this.configService.get<string>('CELO_RPC_URL');

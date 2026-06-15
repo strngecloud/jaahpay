@@ -12,11 +12,24 @@ export class ExchangeRateService {
     private currentRate: ExchangeRate | null = null;
     private readonly MAX_RATE_AGE_MS = 5 * 60 * 1000; // 5 minutes
     private readonly MAX_RATE_DEVIATION = 0.05; // 5%
+    private readonly isDevelopment: boolean;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
-    ) { }
+    ) {
+        this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'development';
+
+        if (this.isDevelopment) {
+            this.logger.log('Development mode: Using fixed exchange rate of 1370 NGN/USD');
+            this.currentRate = {
+                usdToNgn: 1370,
+                source: 'development-fixed',
+                timestamp: new Date(),
+                confidence: 1.0,
+            };
+        }
+    }
 
     /**
      * Get current USD to NGN exchange rate
@@ -38,6 +51,12 @@ export class ExchangeRateService {
      */
     @Cron(CronExpression.EVERY_MINUTE)
     async updateRate(): Promise<void> {
+        // Skip API calls in development mode - use fixed rate
+        if (this.isDevelopment) {
+            this.logger.debug('Development mode: Skipping exchange rate API update');
+            return;
+        }
+
         this.logger.log('Updating exchange rate...');
 
         const rates = await Promise.allSettled([

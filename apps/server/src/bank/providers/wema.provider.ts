@@ -9,6 +9,7 @@ import {
     BankTransferResponse,
     BankAccountValidation,
     BankProvider,
+    BankInfo,
 } from '../../common/types/spend.types';
 import { BankApiException } from '../../common/exceptions/custom.exceptions';
 
@@ -203,6 +204,31 @@ export class WemaProvider implements IBankProvider {
         } catch (error) {
             this.logger.warn('Wema provider is not available');
             return false;
+        }
+    }
+
+    async listBanks(): Promise<BankInfo[]> {
+        try {
+            const response = await firstValueFrom(
+                this.httpService.get(`${this.apiUrl}/OpenApiTransfer/GetAllBanks`, {
+                    headers: {
+                        'Ocp-Apim-Subscription-Key': this.apiKey,
+                    },
+                    timeout: 15000,
+                }),
+            );
+
+            const banks: BankInfo[] = (response.data.result || [])
+                .filter((b: { bankCode?: string; bankName?: string }) => b.bankCode && b.bankName)
+                .map((b: { bankCode: string; bankName: string }) => ({
+                    code: b.bankCode,
+                    name: b.bankName,
+                }));
+
+            return banks.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (error: any) {
+            this.logger.error('Wema list banks failed:', error.message);
+            throw new BankApiException('Wema', 'Failed to list banks', error);
         }
     }
 }

@@ -1,14 +1,17 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { IBankProvider } from './interfaces/bank-provider.interface';
 import { WemaProvider } from './providers/wema.provider';
 import { PaystackProvider } from './providers/paystack.provider';
+import { MockBankProvider } from './providers/mock.provider';
 import {
     BankTransferRequest,
     BankTransferResponse,
     BankAccountValidation,
     BankProvider,
+    BankInfo,
 } from '../common/types/spend.types';
 import { BankApiLogEntity } from '../database/entities/bank-api-log.entity';
 import { BankApiException } from '../common/exceptions/custom.exceptions';
@@ -25,10 +28,21 @@ export class BankService implements OnModuleInit {
     constructor(
         @InjectRepository(BankApiLogEntity)
         private readonly bankApiLogRepo: Repository<BankApiLogEntity>,
+        private readonly configService: ConfigService,
         private readonly wemaProvider: WemaProvider,
         private readonly paystackProvider: PaystackProvider,
+        private readonly mockProvider: MockBankProvider,
     ) {
-        this.providers.set(BankProvider.WEMA, wemaProvider);
+        const isDevelopment = this.configService.get<string>('NODE_ENV') === 'development';
+
+        if (isDevelopment) {
+            this.logger.log('Development mode: Using mock bank provider as priority');
+            this.providerPriority = [BankProvider.WEMA, BankProvider.PAYSTACK];
+            this.providers.set(BankProvider.WEMA, mockProvider);
+        } else {
+            this.providers.set(BankProvider.WEMA, wemaProvider);
+        }
+
         this.providers.set(BankProvider.PAYSTACK, paystackProvider);
     }
 
@@ -221,6 +235,28 @@ export class BankService implements OnModuleInit {
             ...request,
             // Add any sanitization needed
         };
+    }
+
+    /**
+     * List Nigerian banks from the first available provider
+     */
+    async listBanks(): Promise<BankInfo[]> {
+        for (const providerName of this.providerPriority) {
+            const provider = this.providers.get(providerName);
+            if (!provider) continue;
+
+            try {
+                const isAvailable = await provider.isAvailable();
+                if (!isAvailable) continue;
+
+                this.logger.log(`Listing banks via ${providerName}`);
+                return await provider.listBanks();
+            } catch (error) {
+                this.logger.warn(`List banks failed with ${providerName}:`, error);
+            }
+        }
+
+        throw new BankApiException('All providers', 'Failed to list banks from any provider');
     }
 
     /**
