@@ -2,10 +2,10 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { ArrowRightLeft } from "lucide-react";
+import { ArrowRightLeft, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type TransactionType = "swap";
+export type TransactionType = "swap" | "spend";
 
 interface TransactionTabsProps {
   activeTab: TransactionType;
@@ -21,6 +21,11 @@ const tabs: Array<{
     id: "swap",
     label: "Swap",
     icon: <ArrowRightLeft className="w-4 h-4" />,
+  },
+  {
+    id: "spend",
+    label: "Spend",
+    icon: <Building2 className="w-4 h-4" />,
   },
 ];
 
