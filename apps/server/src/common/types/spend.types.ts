@@ -74,6 +74,12 @@ export interface BankAccountValidation {
     valid: boolean;
 }
 
+export interface BankInfo {
+    code: string;
+    name: string;
+    slug?: string;
+}
+
 export interface ExchangeRate {
     usdToNgn: number;
     source: string;

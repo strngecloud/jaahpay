@@ -18,9 +18,9 @@ export class SpendTimeoutService {
     ) { }
 
     /**
-     * Run every 2 minutes to check for timed out spends
+     * Run every 5 minutes to check for timed out spends
      */
-    @Cron(CronExpression.EVERY_2_MINUTES)
+    @Cron(CronExpression.EVERY_5_MINUTES)
     async checkTimedOutSpends() {
         try {
             const timeoutThreshold = new Date(

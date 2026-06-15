@@ -74,4 +74,17 @@ export class SpendController {
     async validateAccount(@Body() dto: ValidateAccountDto) {
         return await this.spendService.validateAccount(dto);
     }
+
+    /**
+     * POST /api/v1/spend/confirm-blockchain
+     * Confirm blockchain transaction for a spend
+     */
+    @Post('confirm-blockchain')
+    @HttpCode(HttpStatus.OK)
+    async confirmBlockchain(
+        @Body() body: { tempSpendId: string; blockchainTxHash: string; blockchainSpendId: string },
+    ) {
+        await this.spendService.updateSpendId(body.tempSpendId, body.blockchainSpendId);
+        return { success: true };
+    }
 }
