@@ -17,8 +17,8 @@ import {
   celoAlfajores,
   base,
   baseSepolia,
+  privateKeyToAccount,
 } from '../common/types/viem-wrapper';
-import { privateKeyToAccount } from 'viem/accounts';
 import { Chain, SpendInitiatedEvent } from '../common/types/spend.types';
 import { SpendProcessorService } from '../spend/services/spend-processor.service';
 import { SPEND_ROUTER_ABI } from '../common/abis/spend-router.abi';

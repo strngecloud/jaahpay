@@ -20,17 +20,12 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "suppressImplicitAnyIndexErrors": false,
     "noImplicitReturns": false,
-    "types": ["node"],
+    "types": ["node", "jest"],
+    "lib": ["ES2021"],
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "exclude": ["node_modules", "dist", "**/*.spec.ts"],
-  "ts-node": {
-    "compilerOptions": {
-      "module": "commonjs"
-    }
-  }
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
 }

@@ -3,6 +3,9 @@
  * This file imports viem types without triggering type checking on ox
  */
 
+// Export all viem types first
 export * from 'viem';
-export * from 'viem/accounts';
+// Export specific account functions
+export { privateKeyToAccount } from 'viem/accounts';
+// Export chains
 export { celo, celoAlfajores, base, baseSepolia } from 'viem/chains';
