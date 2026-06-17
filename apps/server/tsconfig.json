@@ -13,24 +13,22 @@
     "incremental": true,
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "maxNodeModuleJsDepth": 0,
+    "maxNodeModuleJsDepth": 3,
     "noImplicitOverride": false,
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "suppressImplicitAnyIndexErrors": false,
     "noImplicitReturns": false,
-    "types": ["node"],
+    "suppressImplicitAnyIndexErrors": false,
+    "noEmitOnError": false,
+    "types": ["node", "jest"],
+    "lib": ["ES2021", "DOM", "WebWorker"],
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "noEmit": false
   },
-  "exclude": ["node_modules", "dist", "**/*.spec.ts"],
-  "ts-node": {
-    "compilerOptions": {
-      "module": "commonjs"
-    }
-  }
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
 }

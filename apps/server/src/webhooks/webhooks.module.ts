@@ -8,13 +8,13 @@ import { BlockchainModule } from '../blockchain/blockchain.module';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([SpendEntity, WebhookLogEntity]),
-        BlockchainModule,
-        RedisModule,
-    ],
-    controllers: [WebhooksController],
-    providers: [WebhooksService],
-    exports: [WebhooksService],
+  imports: [
+    TypeOrmModule.forFeature([SpendEntity, WebhookLogEntity]),
+    BlockchainModule,
+    RedisModule,
+  ],
+  controllers: [WebhooksController],
+  providers: [WebhooksService],
+  exports: [WebhooksService],
 })
-export class WebhooksModule { }
+export class WebhooksModule {}

@@ -14,16 +14,21 @@ import { FraudModule } from '../fraud/fraud.module';
 import { LedgerModule } from '../ledger/ledger.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([SpendEntity, UserSpendLimitEntity]),
-        BankModule,
-        ExchangeRateModule,
-        forwardRef(() => BlockchainModule),
-        FraudModule,
-        LedgerModule,
-    ],
-    controllers: [SpendController],
-    providers: [SpendService, SpendProcessorService, SpendLimitService, SpendTimeoutService],
-    exports: [SpendProcessorService],
+  imports: [
+    TypeOrmModule.forFeature([SpendEntity, UserSpendLimitEntity]),
+    BankModule,
+    ExchangeRateModule,
+    forwardRef(() => BlockchainModule),
+    FraudModule,
+    LedgerModule,
+  ],
+  controllers: [SpendController],
+  providers: [
+    SpendService,
+    SpendProcessorService,
+    SpendLimitService,
+    SpendTimeoutService,
+  ],
+  exports: [SpendProcessorService],
 })
-export class SpendModule { }
+export class SpendModule {}

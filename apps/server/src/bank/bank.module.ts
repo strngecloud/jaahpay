@@ -9,15 +9,15 @@ import { MockBankProvider } from './providers/mock.provider';
 import { BankApiLogEntity } from '../database/entities/bank-api-log.entity';
 
 @Module({
-    imports: [
-        HttpModule.register({
-            timeout: 30000,
-            maxRedirects: 5,
-        }),
-        TypeOrmModule.forFeature([BankApiLogEntity]),
-    ],
-    controllers: [BankController],
-    providers: [BankService, WemaProvider, PaystackProvider, MockBankProvider],
-    exports: [BankService],
+  imports: [
+    HttpModule.register({
+      timeout: 30000,
+      maxRedirects: 5,
+    }),
+    TypeOrmModule.forFeature([BankApiLogEntity]),
+  ],
+  controllers: [BankController],
+  providers: [BankService, WemaProvider, PaystackProvider, MockBankProvider],
+  exports: [BankService],
 })
-export class BankModule { }
+export class BankModule {}
