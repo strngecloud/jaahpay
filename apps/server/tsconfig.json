@@ -21,11 +21,13 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": false,
+    "suppressImplicitAnyIndexErrors": false,
     "types": ["node", "jest"],
     "lib": ["ES2021"],
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "noEmit": false
   },
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
 }
