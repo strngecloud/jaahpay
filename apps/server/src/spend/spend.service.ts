@@ -15,11 +15,8 @@ import {
   ValidateAccountDto,
   CancelSpendDto,
 } from '../common/dto/spend.dto';
-import { SpendStatus, Chain } from '../common/types/spend.types';
-import {
-  InvalidAccountException,
-  SpendNotFoundException,
-} from '../common/exceptions/custom.exceptions';
+import { SpendStatus } from '../common/types/spend.types';
+import { InvalidAccountException } from '../common/exceptions/custom.exceptions';
 
 @Injectable()
 export class SpendService {
@@ -109,7 +106,7 @@ export class SpendService {
       status: SpendStatus.PENDING,
     });
 
-    const savedSpend = await this.spendRepo.save(spend);
+    await this.spendRepo.save(spend);
 
     // 7. Record spending against limits
     await this.spendLimitService.recordSpend(

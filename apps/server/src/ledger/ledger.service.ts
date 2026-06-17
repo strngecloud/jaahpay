@@ -44,8 +44,6 @@ export class LedgerService {
 
     try {
       const totalUSDC = spend.usdcAmount + spend.platformFeeUsdc;
-      const platformFee = spend.platformFeeUsdc;
-      const netAmount = spend.usdcAmount;
 
       // Entry 1: Debit user balance (money out)
       await this.createEntry(queryRunner, {

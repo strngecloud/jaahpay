@@ -5,12 +5,6 @@ import { SpendEntity } from '../database/entities/spend.entity';
 import { RedisService } from '../redis/redis.service';
 import { FraudCheckException } from '../common/exceptions/custom.exceptions';
 
-interface VelocityCheck {
-  transactionsPerMinute: number;
-  transactionsPerHour: number;
-  maxAmount: number;
-}
-
 interface RiskScore {
   velocityRisk: number;
   duplicateRisk: number;
@@ -271,10 +265,11 @@ export class FraudService {
   /**
    * Clean up old velocity records (called by cron job)
    */
-  async cleanupVelocityRecords(): Promise<void> {
+  cleanupVelocityRecords(): Promise<void> {
     // Redis handles expiry automatically, but we can log cleanup
     this.logger.log(
       'Velocity records cleanup completed (handled by Redis TTL)',
     );
+    return Promise.resolve();
   }
 }
