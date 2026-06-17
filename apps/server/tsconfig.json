@@ -13,7 +13,7 @@
     "incremental": true,
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "maxNodeModuleJsDepth": 0,
+    "maxNodeModuleJsDepth": 3,
     "noImplicitOverride": false,
     "strictNullChecks": false,
     "noImplicitAny": false,
@@ -22,6 +22,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": false,
     "suppressImplicitAnyIndexErrors": false,
+    "noEmitOnError": false,
     "types": ["node", "jest"],
     "lib": ["ES2021"],
     "paths": {
