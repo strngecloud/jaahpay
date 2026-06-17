@@ -92,7 +92,7 @@ export class WebhooksController {
    */
   @Post('health')
   @HttpCode(HttpStatus.OK)
-  async healthCheck() {
+  healthCheck() {
     return {
       status: 'healthy',
       timestamp: new Date().toISOString(),

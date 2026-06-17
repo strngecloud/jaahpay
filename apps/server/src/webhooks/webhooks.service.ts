@@ -26,13 +26,13 @@ export class WebhooksService {
   /**
    * Verify Wema webhook signature using HMAC SHA512
    */
-  async verifyWemaSignature(payload: any, signature: string): Promise<boolean> {
-    if (!signature) return false;
+  verifyWemaSignature(payload: any, signature: string): Promise<boolean> {
+    if (!signature) return Promise.resolve(false);
 
     const saltKey = this.configService.get<string>('WEMA_SALT_KEY');
     if (!saltKey) {
       this.logger.error('WEMA_SALT_KEY not configured');
-      return false;
+      return Promise.resolve(false);
     }
 
     try {
@@ -41,26 +41,23 @@ export class WebhooksService {
       hmac.update(payloadString);
       const computedSignature = hmac.digest('hex');
 
-      return computedSignature === signature;
+      return Promise.resolve(computedSignature === signature);
     } catch (error) {
       this.logger.error('Error verifying Wema signature:', error);
-      return false;
+      return Promise.resolve(false);
     }
   }
 
   /**
    * Verify Paystack webhook signature using HMAC SHA512
    */
-  async verifyPaystackSignature(
-    payload: any,
-    signature: string,
-  ): Promise<boolean> {
-    if (!signature) return false;
+  verifyPaystackSignature(payload: any, signature: string): Promise<boolean> {
+    if (!signature) return Promise.resolve(false);
 
     const secretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY');
     if (!secretKey) {
       this.logger.error('PAYSTACK_SECRET_KEY not configured');
-      return false;
+      return Promise.resolve(false);
     }
 
     try {
@@ -69,10 +66,10 @@ export class WebhooksService {
       hmac.update(payloadString);
       const computedSignature = hmac.digest('hex');
 
-      return computedSignature === signature;
+      return Promise.resolve(computedSignature === signature);
     } catch (error) {
       this.logger.error('Error verifying Paystack signature:', error);
-      return false;
+      return Promise.resolve(false);
     }
   }
 
@@ -80,13 +77,8 @@ export class WebhooksService {
    * Process Wema webhook for bank transfer status
    */
   async processWemaWebhook(payload: any): Promise<void> {
-    const {
-      transactionReference,
-      platformTransactionReference,
-      status,
-      amount,
-      narration,
-    } = payload;
+    const { transactionReference, platformTransactionReference, status } =
+      payload;
 
     // Check idempotency - prevent duplicate processing
     const idempotencyKey = `webhook:wema:${transactionReference}`;
@@ -143,7 +135,7 @@ export class WebhooksService {
       return;
     }
 
-    const { reference, status, recipient } = data;
+    const { reference } = data;
 
     // Check idempotency
     const idempotencyKey = `webhook:paystack:${reference}`;
