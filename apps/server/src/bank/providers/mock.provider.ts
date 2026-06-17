@@ -28,11 +28,12 @@ export class MockBankProvider implements IBankProvider {
     return BankProvider.WEMA;
   }
 
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
     this.logger.log('Initializing Mock Bank provider (Development mode)');
+    return Promise.resolve();
   }
 
-  async validateAccount(
+  validateAccount(
     accountNumber: string,
     bankCode: string,
   ): Promise<BankAccountValidation> {
@@ -41,34 +42,34 @@ export class MockBankProvider implements IBankProvider {
     // Check if this is a configured test account
     const mockName = this.mockAccounts.get(accountNumber);
     if (mockName) {
-      return {
+      return Promise.resolve({
         accountNumber,
         bankCode,
         accountName: mockName,
         valid: true,
-      };
+      });
     }
 
     // Allow any account with length 10-11 (typical Nigerian account format)
     if (accountNumber.length >= 10 && accountNumber.length <= 11) {
-      return {
+      return Promise.resolve({
         accountNumber,
         bankCode,
         accountName: `Test Account ${accountNumber}`,
         valid: true,
-      };
+      });
     }
 
-    return {
+    return Promise.resolve({
       accountNumber,
       bankCode,
       valid: false,
-    };
+    });
   }
 
-  async transfer(request: BankTransferRequest): Promise<BankTransferResponse> {
+  transfer(request: BankTransferRequest): Promise<BankTransferResponse> {
     this.logger.log(`Mock transfer initiated: ${request.reference}`);
-    return {
+    return Promise.resolve({
       success: true,
       reference: `MOCK-${request.reference}`,
       status: 'pending',
@@ -76,11 +77,11 @@ export class MockBankProvider implements IBankProvider {
       data: {
         mockData: true,
       },
-    };
+    });
   }
 
-  async getTransferStatus(reference: string): Promise<BankTransferResponse> {
-    return {
+  getTransferStatus(reference: string): Promise<BankTransferResponse> {
+    return Promise.resolve({
       success: true,
       reference,
       status: 'success',
@@ -88,18 +89,18 @@ export class MockBankProvider implements IBankProvider {
       data: {
         mockData: true,
       },
-    };
+    });
   }
 
-  async isAvailable(): Promise<boolean> {
-    return true;
+  isAvailable(): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
-  async listBanks(): Promise<BankInfo[]> {
-    return [
+  listBanks(): Promise<BankInfo[]> {
+    return Promise.resolve([
       { code: '035', name: 'Wema Bank' },
       { code: '076', name: 'Zenith Bank' },
       { code: '044', name: 'Access Bank' },
-    ];
+    ]);
   }
 }

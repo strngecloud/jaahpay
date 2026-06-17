@@ -198,12 +198,8 @@ export class BankService implements OnModuleInit {
 
     try {
       return await bankProvider.getTransferStatus(reference);
-    } catch (error: any) {
-      throw new BankApiException(
-        provider,
-        'Failed to get transfer status',
-        error,
-      );
+    } catch {
+      throw new BankApiException(provider, 'Failed to get transfer status');
     }
   }
 
@@ -277,7 +273,7 @@ export class BankService implements OnModuleInit {
         if (isAvailable) {
           available.push(name);
         }
-      } catch (error) {
+      } catch {
         this.logger.warn(`Provider ${name} availability check failed`);
       }
     }

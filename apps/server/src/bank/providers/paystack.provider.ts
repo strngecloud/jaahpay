@@ -33,6 +33,8 @@ export class PaystackProvider implements IBankProvider {
   async initialize(): Promise<void> {
     this.logger.log('Initializing Paystack provider...');
     // Paystack doesn't require authentication setup, key is used per request
+    // Validation will happen on first API call
+    await Promise.resolve();
   }
 
   async validateAccount(

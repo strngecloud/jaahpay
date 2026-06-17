@@ -58,7 +58,9 @@ export class WemaProvider implements IBankProvider {
   async initialize(): Promise<void> {
     this.logger.log('Initializing Wema Bank provider...');
     // Wema uses subscription key authentication, no OAuth needed
+    // All setup is done via environment variables
     this.logger.log('Wema provider ready (uses subscription key auth)');
+    await Promise.resolve();
   }
 
   async validateAccount(
@@ -205,7 +207,7 @@ export class WemaProvider implements IBankProvider {
         }),
       );
       return true;
-    } catch (error) {
+    } catch {
       this.logger.warn('Wema provider is not available');
       return false;
     }
