@@ -172,7 +172,7 @@ export class PaystackProvider implements IBankProvider {
         }),
       );
       return true;
-    } catch (error) {
+    } catch {
       this.logger.warn('Paystack provider is not available');
       return false;
     }
