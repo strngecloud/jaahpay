@@ -2,7 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "noEmit": false,
+    "noEmitOnError": false,
     "declaration": true,
     "noImplicitAny": false,
     "strictNullChecks": false,

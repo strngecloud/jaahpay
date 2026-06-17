@@ -24,7 +24,7 @@
     "suppressImplicitAnyIndexErrors": false,
     "noEmitOnError": false,
     "types": ["node", "jest"],
-    "lib": ["ES2021"],
+    "lib": ["ES2021", "DOM", "WebWorker"],
     "paths": {
       "@/*": ["src/*"]
     },
