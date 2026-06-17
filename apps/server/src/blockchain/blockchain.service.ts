@@ -17,8 +17,6 @@ import {
   celoAlfajores,
   base,
   baseSepolia,
-  parseEther,
-  formatEther,
 } from '../common/types/viem-wrapper';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Chain, SpendInitiatedEvent } from '../common/types/spend.types';
@@ -109,10 +107,10 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     this.logger.log('Initializing blockchain event listeners...');
-    await this.startEventListeners();
+    this.startEventListeners();
   }
 
-  private async startEventListeners() {
+  private startEventListeners() {
     const celoContractAddress = this.configService.get<string>(
       'SPEND_ROUTER_ADDRESS_CELO',
     );
@@ -197,7 +195,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async getClient(chain: Chain): Promise<any> {
+  getClient(chain: Chain): any {
     return chain === Chain.CELO ? this.celoClient : this.baseClient;
   }
 
