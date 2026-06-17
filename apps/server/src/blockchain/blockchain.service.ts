@@ -61,7 +61,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     if (
       !processorKey ||
       processorKey ===
-      '0x0000000000000000000000000000000000000000000000000000000000000000'
+        '0x0000000000000000000000000000000000000000000000000000000000000000'
     ) {
       this.logger.error(
         'PROCESSOR_WALLET_PRIVATE_KEY not configured - blockchain transactions will fail!',
