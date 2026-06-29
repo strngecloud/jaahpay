@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { SpendEntity } from '../database/entities/spend.entity';
 import { RedisService } from '../redis/redis.service';
 import { FraudCheckException } from '../common/exceptions/custom.exceptions';
