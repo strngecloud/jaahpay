@@ -78,7 +78,7 @@ export class PaystackProvider implements IBankProvider {
           `${this.apiUrl}/transferrecipient`,
           {
             type: 'nuban',
-            name: 'Jahpay User', // You might want to get actual name from validation
+            name: request.accountName || request.accountNumber,
             account_number: request.accountNumber,
             bank_code: request.bankCode,
             currency: 'NGN',

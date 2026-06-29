@@ -89,6 +89,7 @@ export class SpendProcessorService {
     const transferRequest: BankTransferRequest = {
       accountNumber: spend.recipientAccountNumber,
       bankCode: spend.recipientBankCode,
+      accountName: spend.recipientAccountName,
       amount: spend.ngnAmount,
       narration:
         spend.narration || `Jahpay spend: ${spend.spendId.slice(0, 10)}`,
