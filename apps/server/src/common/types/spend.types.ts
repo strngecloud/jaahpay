@@ -54,6 +54,7 @@ export interface SpendRefundedEvent {
 export interface BankTransferRequest {
   accountNumber: string;
   bankCode: string;
+  accountName?: string;
   amount: number;
   narration: string;
   reference: string;

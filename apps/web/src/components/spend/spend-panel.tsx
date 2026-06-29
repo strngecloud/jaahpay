@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Activity, ChevronRight } from "lucide-react";
 import { useReadContract } from "wagmi";
 import { useBanks } from "@/lib/hooks/use-banks";
 import { useSpendRecipient } from "@/lib/hooks/use-spend-recipient";
@@ -94,17 +93,6 @@ function SpendPanelContent({
             suggestions={recipients.bankSuggestions}
             onSuggestionSelect={recipient.fillRecipient}
           />
-
-          {/* Success rate monitor banner */}
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors group">
-            <div className="w-8 h-8 rounded-full bg-brand-green/10 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-brand-green" />
-            </div>
-            <span className="flex-1 text-left text-xs font-medium text-white/60">
-              Bank Transfer Success Rate Monitor
-            </span>
-            <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-brand-green transition-colors" />
-          </button>
 
           <RecipientList
             activeTab={recipients.activeTab}
