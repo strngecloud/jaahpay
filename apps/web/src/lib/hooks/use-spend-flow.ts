@@ -37,8 +37,7 @@ function getUsdcAddress(chainId: number): `0x${string}` {
   const usdc = SWAP_TOKENS.find((t) => t.symbol === "USDC");
   if (!usdc) throw new Error("USDC token not configured");
 
-  // Celo Sepolia or other testnet
-  if (chainId === 11142220 || chainId === 44787) {
+  if (chainId === 44787) {
     return usdc.addressSepolia as `0x${string}`;
   }
   return usdc.address as `0x${string}`;
