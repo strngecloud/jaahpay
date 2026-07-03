@@ -34,16 +34,11 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   private unwatchCelo: WatchContractEventReturnType | null = null;
   private unwatchBase: WatchContractEventReturnType | null = null;
 
+  // Event definitions must match SpendRouter.sol exactly (including
+  // recipientHash) or the log topic hash will never match and the
+  // listener will silently receive nothing.
   private readonly SPEND_INITIATED_EVENT = parseAbiItem(
-    'event SpendInitiated(uint256 indexed spendId, address indexed user, uint256 usdcAmount, uint256 ngnAmount, uint256 timestamp)',
-  );
-
-  private readonly SPEND_COMPLETED_EVENT = parseAbiItem(
-    'event SpendCompleted(uint256 indexed spendId, string bankTransactionRef)',
-  );
-
-  private readonly SPEND_REFUNDED_EVENT = parseAbiItem(
-    'event SpendRefunded(uint256 indexed spendId, string reason)',
+    'event SpendInitiated(uint256 indexed spendId, address indexed user, uint256 usdcAmount, uint256 ngnAmount, uint256 timestamp, bytes32 recipientHash)',
   );
 
   constructor(
