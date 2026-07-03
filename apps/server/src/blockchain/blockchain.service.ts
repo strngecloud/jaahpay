@@ -205,6 +205,54 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Lock a spend on-chain before starting the bank transfer, so the user
+   * cannot cancel (and reclaim escrow) while NGN is in flight.
+   */
+  async markProcessing(spendId: string, chain: Chain): Promise<string> {
+    const walletClient =
+      chain === Chain.CELO ? this.celoWalletClient : this.baseWalletClient;
+    const contractAddress =
+      chain === Chain.CELO
+        ? this.configService.get<string>('SPEND_ROUTER_ADDRESS_CELO')
+        : this.configService.get<string>('SPEND_ROUTER_ADDRESS_BASE');
+
+    if (!walletClient) {
+      throw new Error(
+        'Wallet client not initialized - check PROCESSOR_WALLET_PRIVATE_KEY',
+      );
+    }
+
+    if (
+      !contractAddress ||
+      contractAddress === '0x0000000000000000000000000000000000000000'
+    ) {
+      throw new Error(`SpendRouter address not configured for ${chain}`);
+    }
+
+    this.logger.log(`Marking spend ${spendId} as processing on ${chain}`);
+
+    const hash = await walletClient.writeContract({
+      address: contractAddress as `0x${string}`,
+      abi: SPEND_ROUTER_ABI,
+      functionName: 'markProcessing',
+      args: [BigInt(spendId)],
+    });
+
+    const publicClient =
+      chain === Chain.CELO ? this.celoClient : this.baseClient;
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash,
+      confirmations: 2,
+    });
+
+    if (receipt.status !== 'success') {
+      throw new Error(`markProcessing reverted: ${hash}`);
+    }
+
+    return hash;
+  }
+
+  /**
    * Complete a spend on the blockchain after successful bank transfer
    */
   async completeSpend(

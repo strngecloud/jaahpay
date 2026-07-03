@@ -12,6 +12,13 @@ export const SPEND_ROUTER_ABI = [
   },
   {
     type: 'function',
+    name: 'markProcessing',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'spendId', type: 'uint256' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
     name: 'completeSpend',
     stateMutability: 'nonpayable',
     inputs: [

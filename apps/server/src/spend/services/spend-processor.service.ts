@@ -101,6 +101,12 @@ export class SpendProcessorService {
         return;
       }
 
+      // Lock the escrow on-chain before any money moves off-chain, so the
+      // user cannot cancel and reclaim USDC while the NGN is in flight.
+      // If this fails we stop here: the spend stays Pending/refundable and
+      // no bank transfer has been attempted.
+      await this.blockchainService.markProcessing(event.spendId, event.chain);
+
       // Update spend with blockchain data
       spend.transactionHash = event.transactionHash;
       spend.blockNumber = event.blockNumber;
