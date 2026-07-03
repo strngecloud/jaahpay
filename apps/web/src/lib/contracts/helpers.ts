@@ -4,27 +4,6 @@ import { parseUnits, formatUnits } from "viem";
  * Contract helper utilities
  */
 
-export const RAMP_ADDRESSES = {
-  mainnet: {
-    rampAggregator: process.env.NEXT_PUBLIC_RAMP_AGGREGATOR_ADDRESS || "0x",
-    feeCollector: process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS || "0x",
-  },
-  alfajores: {
-    rampAggregator: process.env.NEXT_PUBLIC_RAMP_AGGREGATOR_ADDRESS || "0x",
-    feeCollector: process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS || "0x",
-  },
-};
-
-export function getRampContractAddresses(chainId: number) {
-  if (chainId === 42220) {
-    return RAMP_ADDRESSES.mainnet;
-  }
-  if (chainId === 44787) {
-    return RAMP_ADDRESSES.alfajores;
-  }
-  throw new Error(`Unsupported chain: ${chainId}`);
-}
-
 /**
  * SpendRouter escrow contract (the contract the backend watches and can
  * complete/refund). The spend flow must use this, not the ramp aggregator.
