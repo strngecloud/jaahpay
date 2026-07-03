@@ -8,6 +8,9 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    // Keep the raw request body so webhook HMAC signatures can be verified
+    // over the exact bytes the provider signed.
+    rawBody: true,
   });
 
   const configService = app.get(ConfigService);
