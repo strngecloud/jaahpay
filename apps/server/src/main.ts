@@ -24,13 +24,21 @@ async function bootstrap() {
     }),
   );
 
-  // CORS configuration
+  // Trust the first proxy hop so req.ip (used for rate limiting) is the
+  // client address, not the load balancer's.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  // CORS configuration - comma-separated origins from env, localhost fallback
+  const corsOrigins = (
+    configService.get<string>('CORS_ORIGINS') ||
+    'http://localhost:3000,http://localhost:3001'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      // Add your frontend URLs here
-    ],
+    origin: corsOrigins,
     credentials: true,
   });
 
