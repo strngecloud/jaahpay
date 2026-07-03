@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useAccount, useChainId, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits, keccak256, toHex } from "viem";
+import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { parseUnits, keccak256, stringToHex, parseEventLogs } from "viem";
 import { initiateSpend, confirmBlockchainSpend, getSpendStatus } from "@/lib/spend/api";
 import { useExchangeRate } from "./use-exchange-rate";
 import { SWAP_TOKENS } from "@/lib/minipay/constants";
-import { RampAggregatorABI } from "@/lib/contracts/ramp-abi";
-import { getRampContractAddresses } from "@/lib/contracts/helpers";
+import { SpendRouterABI } from "@/lib/contracts/spend-router-abi";
+import { getSpendRouterAddress } from "@/lib/contracts/helpers";
 import type {
   SpendRecipient,
   SpendFlowStep,
@@ -63,9 +63,10 @@ export function useSpendFlow() {
   const [flowError, setFlowError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Wagmi write contract hooks ──────────────────────────────────────
+  // ── Wagmi contract hooks ────────────────────────────────────────────
+  const publicClient = usePublicClient();
   const { writeContractAsync: writeApprove } = useWriteContract();
-  const { writeContractAsync: writeOffRamp } = useWriteContract();
+  const { writeContractAsync: writeInitiateSpend } = useWriteContract();
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -137,49 +138,77 @@ export function useSpendFlow() {
         chain: "celo",
       });
 
-      const spendId = serverResponse.data.spendId;
-      setTempSpendId(spendId);
+      const serverSpendId = serverResponse.data.spendId;
+      setTempSpendId(serverSpendId);
+
+      if (!publicClient) throw new Error("Network client unavailable");
 
       // Use the server's authoritative quote values
       const totalUSDC = serverResponse.data.totalUSDCRequired;
       const usdcAddress = getUsdcAddress(chainId);
-      const rampAddresses = getRampContractAddresses(chainId);
-      const rampAddress = rampAddresses.rampAggregator as `0x${string}`;
+      const spendRouterAddress = getSpendRouterAddress(chainId);
+      const spendAmount = parseUnits(totalUSDC.toFixed(6), 6);
 
-      // 2. Approve USDC transfer to ramp aggregator
-      const approveAmount = parseUnits(totalUSDC.toFixed(6), 6);
-
+      // 2. Approve USDC transfer to the SpendRouter escrow and wait for it
+      // to land before spending the allowance.
       const approveTxHash = await writeApprove({
         address: usdcAddress,
         abi: ERC20_APPROVE_ABI,
         functionName: "approve",
-        args: [rampAddress, approveAmount],
+        args: [spendRouterAddress, spendAmount],
       });
+      await publicClient.waitForTransactionReceipt({ hash: approveTxHash });
 
       setProcessingStep("sending");
 
-      // 3. Call initiateOffRamp on the ramp aggregator
-      const requestId = keccak256(toHex(spendId));
-      const offRampAmount = parseUnits(totalUSDC.toFixed(6), 6);
+      // 3. Escrow the USDC in the SpendRouter. The recipient hash keeps
+      // bank details off-chain while still committing to them.
+      const recipientHash = keccak256(
+        stringToHex(
+          `${recipient.bankCode}:${recipient.accountNumber}:${recipient.accountName ?? ""}`,
+        ),
+      );
 
-      const offRampTxHash = await writeOffRamp({
-        address: rampAddress,
-        abi: RampAggregatorABI,
-        functionName: "initiateOffRamp",
-        args: [offRampAmount, "jahpay", requestId],
+      const spendTxHash = await writeInitiateSpend({
+        address: spendRouterAddress,
+        abi: SpendRouterABI,
+        functionName: "initiateSpend",
+        args: [spendAmount, BigInt(Math.round(quote.ngnAmount)), recipientHash],
       });
 
-      setTxHash(offRampTxHash);
+      setTxHash(spendTxHash);
 
-      // 4. Confirm with server
-      await confirmBlockchainSpend(spendId, offRampTxHash, requestId);
+      // 4. Read the on-chain spendId from the SpendInitiated event
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: spendTxHash,
+      });
+      if (receipt.status !== "success") {
+        throw new Error("Blockchain transaction reverted");
+      }
+
+      const spendLogs = parseEventLogs({
+        abi: SpendRouterABI,
+        eventName: "SpendInitiated",
+        logs: receipt.logs,
+      });
+      const onChainSpendId = spendLogs[0]?.args.spendId;
+      if (onChainSpendId === undefined) {
+        throw new Error("SpendInitiated event not found in receipt");
+      }
+      const boundSpendId = onChainSpendId.toString();
+
+      // 5. Link the server record to the on-chain spend (the backend also
+      // binds it independently from the event, so this is best-effort).
+      await confirmBlockchainSpend(serverSpendId, spendTxHash, boundSpendId).catch(
+        () => undefined,
+      );
 
       setProcessingStep("bank-transfer");
 
-      // 5. Poll for completion
+      // 6. Poll for completion using the on-chain spendId
       pollIntervalRef.current = setInterval(async () => {
         try {
-          const status = await getSpendStatus(spendId);
+          const status = await getSpendStatus(boundSpendId);
           setSpendStatus(status);
 
           if (status.status === "completed") {
@@ -213,8 +242,9 @@ export function useSpendFlow() {
     isConnected,
     narration,
     chainId,
+    publicClient,
     writeApprove,
-    writeOffRamp,
+    writeInitiateSpend,
   ]);
 
   // ── Reset ───────────────────────────────────────────────────────────

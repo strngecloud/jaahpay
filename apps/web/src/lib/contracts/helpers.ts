@@ -25,6 +25,30 @@ export function getRampContractAddresses(chainId: number) {
   throw new Error(`Unsupported chain: ${chainId}`);
 }
 
+/**
+ * SpendRouter escrow contract (the contract the backend watches and can
+ * complete/refund). The spend flow must use this, not the ramp aggregator.
+ */
+export function getSpendRouterAddress(chainId: number): `0x${string}` {
+  const address =
+    chainId === 44787
+      ? process.env.NEXT_PUBLIC_SPEND_ROUTER_ADDRESS_ALFAJORES
+      : chainId === 42220
+        ? process.env.NEXT_PUBLIC_SPEND_ROUTER_ADDRESS
+        : undefined;
+
+  if (chainId !== 42220 && chainId !== 44787) {
+    throw new Error(`Unsupported chain: ${chainId}`);
+  }
+  if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    throw new Error(
+      `SpendRouter address not configured for chain ${chainId}. ` +
+        `Set NEXT_PUBLIC_SPEND_ROUTER_ADDRESS(_ALFAJORES).`,
+    );
+  }
+  return address as `0x${string}`;
+}
+
 export function parseAmount(amount: string | number, decimals: number = 18) {
   return parseUnits(amount.toString(), decimals);
 }
