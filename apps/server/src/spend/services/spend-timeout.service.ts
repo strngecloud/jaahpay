@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { SpendEntity } from '../../database/entities/spend.entity';
 import { BlockchainService } from '../../blockchain/blockchain.service';
+import { SpendLimitService } from './spend-limit.service';
 import { SpendStatus } from '../../common/types/spend.types';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class SpendTimeoutService {
     @InjectRepository(SpendEntity)
     private readonly spendRepo: Repository<SpendEntity>,
     private readonly blockchainService: BlockchainService,
+    private readonly spendLimitService: SpendLimitService,
   ) {}
 
   /**
@@ -59,19 +61,32 @@ export class SpendTimeoutService {
     try {
       this.logger.log(`Processing timed out spend: ${spend.spendId}`);
 
-      // Call blockchain emergencyRefund
-      await this.blockchainService.handleTimedOutSpend(
-        spend.spendId,
-        spend.chain,
-      );
+      if (spend.spendId.startsWith('temp-')) {
+        // Never bound to an on-chain spend: the user quoted but never
+        // escrowed, so there is nothing to refund on-chain. Expire the
+        // record and free the reserved limits.
+        spend.status = SpendStatus.CANCELLED;
+        spend.errorMessage = 'Expired: no blockchain transaction received';
+      } else {
+        // Escrowed on-chain but never completed - emergency refund
+        await this.blockchainService.handleTimedOutSpend(
+          spend.spendId,
+          spend.chain,
+        );
+        spend.status = SpendStatus.REFUNDED;
+        spend.errorMessage = 'Transaction timed out after 15 minutes';
+      }
 
-      // Update database
-      spend.status = SpendStatus.REFUNDED;
-      spend.errorMessage = 'Transaction timed out after 15 minutes';
       await this.spendRepo.save(spend);
 
+      // Give the reserved amount back to the user's limits
+      await this.spendLimitService.releaseSpend(
+        spend.userAddress,
+        spend.usdcAmount + spend.platformFeeUsdc,
+      );
+
       this.logger.log(
-        `Successfully refunded timed out spend: ${spend.spendId}`,
+        `Successfully resolved timed out spend: ${spend.spendId} (${spend.status})`,
       );
     } catch (error) {
       this.logger.error(
