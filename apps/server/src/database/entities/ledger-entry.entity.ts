@@ -1,3 +1,4 @@
+import { decimalTransformer } from '../transformers/decimal.transformer';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -20,10 +21,10 @@ export class LedgerEntryEntity {
   @Column({ type: 'varchar', length: 50 })
   accountType: string;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, default: 0 })
+  @Column({ type: 'decimal', precision: 20, scale: 6, default: 0, transformer: decimalTransformer })
   debitAmount: number;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, default: 0 })
+  @Column({ type: 'decimal', precision: 20, scale: 6, default: 0, transformer: decimalTransformer })
   creditAmount: number;
 
   @Column({ type: 'text' })
