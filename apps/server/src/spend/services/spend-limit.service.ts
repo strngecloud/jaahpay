@@ -110,6 +110,32 @@ export class SpendLimitService {
   }
 
   /**
+   * Release a previously recorded spend (cancelled, failed or refunded)
+   */
+  async releaseSpend(userAddress: string, usdcAmount: number): Promise<void> {
+    const userLimit = await this.limitRepo.findOne({
+      where: { userAddress: userAddress.toLowerCase() },
+    });
+
+    if (!userLimit) return;
+
+    userLimit.dailySpentUsdc = Math.max(
+      0,
+      userLimit.dailySpentUsdc - usdcAmount,
+    );
+    userLimit.monthlySpentUsdc = Math.max(
+      0,
+      userLimit.monthlySpentUsdc - usdcAmount,
+    );
+
+    await this.limitRepo.save(userLimit);
+
+    this.logger.log(
+      `Released ${usdcAmount} USDC from limits for ${userAddress}`,
+    );
+  }
+
+  /**
    * Create default limits for new user
    */
   private async createDefaultLimits(

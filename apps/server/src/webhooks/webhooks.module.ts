@@ -6,12 +6,14 @@ import { SpendEntity } from '../database/entities/spend.entity';
 import { WebhookLogEntity } from '../database/entities/webhook-log.entity';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { RedisModule } from '../redis/redis.module';
+import { SpendModule } from '../spend/spend.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([SpendEntity, WebhookLogEntity]),
     BlockchainModule,
     RedisModule,
+    SpendModule,
   ],
   controllers: [WebhooksController],
   providers: [WebhooksService],

@@ -8,6 +8,7 @@ import { WebhookLogEntity } from '../database/entities/webhook-log.entity';
 import { SpendStatus, BankProvider } from '../common/types/spend.types';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { RedisService } from '../redis/redis.service';
+import { SpendLimitService } from '../spend/services/spend-limit.service';
 
 @Injectable()
 export class WebhooksService {
@@ -21,6 +22,7 @@ export class WebhooksService {
     private readonly webhookLogRepo: Repository<WebhookLogEntity>,
     private readonly blockchainService: BlockchainService,
     private readonly redisService: RedisService,
+    private readonly spendLimitService: SpendLimitService,
   ) {}
 
   /**
@@ -239,6 +241,12 @@ export class WebhooksService {
       spend.status = SpendStatus.FAILED;
       spend.errorMessage = reason;
       await this.spendRepo.save(spend);
+
+      // Give the reserved amount back to the user's limits
+      await this.spendLimitService.releaseSpend(
+        spend.userAddress,
+        spend.usdcAmount + spend.platformFeeUsdc,
+      );
 
       this.logger.log(
         `Bank transfer failed for spend ${spend.spendId}: ${reason}`,

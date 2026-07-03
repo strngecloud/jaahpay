@@ -5,6 +5,7 @@ import { SpendEntity } from '../../database/entities/spend.entity';
 import { BankService } from '../../bank/bank.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
 import { LedgerService } from '../../ledger/ledger.service';
+import { SpendLimitService } from './spend-limit.service';
 import {
   SpendInitiatedEvent,
   SpendStatus,
@@ -19,12 +20,22 @@ import {
 export class SpendProcessorService {
   private readonly logger = new Logger(SpendProcessorService.name);
 
+  /** USDC has 6 decimals on-chain */
+  private readonly USDC_DECIMALS_FACTOR = 1e6;
+  /** Tolerance for float rounding between quote and on-chain amount */
+  private readonly AMOUNT_TOLERANCE_USDC = 2e-6;
+  /** Bank statuses that mean the money has actually settled */
+  private readonly FINAL_SUCCESS_STATUSES = ['success', 'successful'];
+  /** Bank statuses that mean the transfer is already dead */
+  private readonly FINAL_FAILURE_STATUSES = ['failed', 'reversed', 'abandoned'];
+
   constructor(
     @InjectRepository(SpendEntity)
     private readonly spendRepo: Repository<SpendEntity>,
     private readonly bankService: BankService,
     private readonly blockchainService: BlockchainService,
     private readonly ledgerService: LedgerService,
+    private readonly spendLimitService: SpendLimitService,
   ) {}
 
   /**
@@ -34,8 +45,8 @@ export class SpendProcessorService {
     this.logger.log(`Processing spend initiated: ${event.spendId}`);
 
     try {
-      // Check if spend already exists
-      const spend = await this.spendRepo.findOne({
+      // Check if spend already exists (bound earlier via confirm-blockchain)
+      let spend = await this.spendRepo.findOne({
         where: { spendId: event.spendId },
       });
 
@@ -46,9 +57,46 @@ export class SpendProcessorService {
         return;
       }
 
+      // The on-chain event (not the client) is the source of truth for
+      // binding: match the escrow to a pending record by sender + amount.
       if (!spend) {
+        spend = await this.bindPendingSpend(event);
+      }
+
+      // No backend record at all — refund the escrow rather than leaving
+      // the user's USDC stuck in the contract.
+      if (!spend) {
+        this.logger.warn(
+          `No matching spend record for on-chain spend ${event.spendId}; refunding escrow`,
+        );
+        await this.blockchainService.refundSpend(
+          event.spendId,
+          'No matching spend record',
+          event.chain,
+        );
+        return;
+      }
+
+      // Never pay out NGN unless the on-chain escrow actually covers the
+      // quoted USDC total for this exact user.
+      const escrowedUsdc =
+        Number(event.usdcAmount) / this.USDC_DECIMALS_FACTOR;
+      const expectedTotal = spend.usdcAmount + spend.platformFeeUsdc;
+      const userMatches =
+        spend.userAddress.toLowerCase() === event.user.toLowerCase();
+      const amountCovers =
+        escrowedUsdc + this.AMOUNT_TOLERANCE_USDC >= expectedTotal;
+
+      if (!userMatches || !amountCovers) {
         this.logger.error(
-          `Spend ${event.spendId} not found in database. This shouldn't happen - spend should be created before blockchain transaction.`,
+          `On-chain spend ${event.spendId} does not match record ${spend.spendId}: ` +
+            `user ${event.user} vs ${spend.userAddress}, escrowed ${escrowedUsdc} vs expected ${expectedTotal}. Refunding.`,
+        );
+        await this.failAndRelease(spend, 'On-chain escrow mismatch');
+        await this.blockchainService.refundSpend(
+          event.spendId,
+          'Escrow does not match spend record',
+          event.chain,
         );
         return;
       }
@@ -81,6 +129,61 @@ export class SpendProcessorService {
   }
 
   /**
+   * Bind an on-chain SpendInitiated event to the pending record it was
+   * quoted from, matching by sender address and escrowed amount.
+   */
+  private async bindPendingSpend(
+    event: SpendInitiatedEvent,
+  ): Promise<SpendEntity | null> {
+    const candidates = await this.spendRepo.find({
+      where: {
+        userAddress: event.user.toLowerCase(),
+        status: SpendStatus.PENDING,
+      },
+      order: { createdAt: 'ASC' },
+    });
+
+    const escrowedUsdc = Number(event.usdcAmount) / this.USDC_DECIMALS_FACTOR;
+    const match = candidates.find(
+      (c) =>
+        Math.abs(c.usdcAmount + c.platformFeeUsdc - escrowedUsdc) <=
+        this.AMOUNT_TOLERANCE_USDC,
+    );
+
+    if (!match) return null;
+
+    match.spendId = event.spendId;
+    try {
+      await this.spendRepo.save(match);
+    } catch {
+      // A concurrent confirm-blockchain call may have bound the ID already;
+      // re-read by the on-chain ID.
+      return await this.spendRepo.findOne({
+        where: { spendId: event.spendId },
+      });
+    }
+
+    this.logger.log(
+      `Bound on-chain spend ${event.spendId} to record for ${event.user}`,
+    );
+    return match;
+  }
+
+  /**
+   * Mark a spend as failed and release the reserved spending limits
+   */
+  private async failAndRelease(
+    spend: SpendEntity,
+    errorMessage: string,
+  ): Promise<void> {
+    await this.markSpendAsFailed(spend.spendId, errorMessage);
+    await this.spendLimitService.releaseSpend(
+      spend.userAddress,
+      spend.usdcAmount + spend.platformFeeUsdc,
+    );
+  }
+
+  /**
    * Execute bank transfer for a spend
    */
   private async executeBankTransfer(spend: SpendEntity): Promise<void> {
@@ -102,10 +205,19 @@ export class SpendProcessorService {
         spend.spendId,
       );
 
-      if (result.success) {
-        // Bank transfer successful
+      const status = (result.status || '').toLowerCase();
+
+      if (!result.success || this.FINAL_FAILURE_STATUSES.includes(status)) {
+        throw new Error(result.message || 'Bank transfer failed');
+      }
+
+      // Persist the provider reference immediately so status webhooks can
+      // find this spend.
+      spend.bankReference = result.reference;
+
+      if (this.FINAL_SUCCESS_STATUSES.includes(status)) {
+        // Transfer already settled (mock/synchronous providers)
         spend.status = SpendStatus.COMPLETED;
-        spend.bankReference = result.reference;
         spend.completedAt = new Date();
         await this.spendRepo.save(spend);
 
@@ -134,7 +246,12 @@ export class SpendProcessorService {
           // Continue - bank transfer succeeded, we'll retry blockchain call
         }
       } else {
-        throw new Error(result.message || 'Bank transfer failed');
+        // Transfer accepted but not yet settled (e.g. Paystack 'pending').
+        // Stay in PROCESSING; the provider webhook decides COMPLETED/FAILED.
+        await this.spendRepo.save(spend);
+        this.logger.log(
+          `Bank transfer accepted for spend ${spend.spendId} (status: ${result.status}); awaiting provider webhook`,
+        );
       }
     } catch (error) {
       this.logger.error(
@@ -142,9 +259,9 @@ export class SpendProcessorService {
         error,
       );
 
-      // Mark as failed and trigger refund
-      await this.markSpendAsFailed(
-        spend.spendId,
+      // Mark as failed, release limits and trigger refund
+      await this.failAndRelease(
+        spend,
         error instanceof Error ? error.message : 'Bank transfer failed',
       );
 
@@ -248,6 +365,14 @@ export class SpendProcessorService {
     }
 
     spend.status = SpendStatus.CANCELLED;
-    return await this.spendRepo.save(spend);
+    const cancelled = await this.spendRepo.save(spend);
+
+    // Give the reserved amount back to the user's limits
+    await this.spendLimitService.releaseSpend(
+      spend.userAddress,
+      spend.usdcAmount + spend.platformFeeUsdc,
+    );
+
+    return cancelled;
   }
 }
