@@ -423,4 +423,103 @@ contract SpendRouterTest is Test {
         assertEq(router.feeCollector(), feeCollector);
         assertEq(router.platformFeeBps(), PLATFORM_FEE_BPS);
     }
+
+    // ============ markProcessing / cancel race ============
+
+    function _initiateAsUser() internal returns (uint256 spendId) {
+        vm.startPrank(user);
+        usdc.approve(address(router), USDC_AMOUNT);
+        spendId = router.initiateSpend(USDC_AMOUNT, NGN_AMOUNT, RECIPIENT_HASH);
+        vm.stopPrank();
+    }
+
+    function testMarkProcessing() public {
+        uint256 spendId = _initiateAsUser();
+
+        vm.prank(processor);
+        router.markProcessing(spendId);
+
+        SpendRouter.Spend memory spend = router.getSpend(spendId);
+        assertEq(
+            uint256(spend.status),
+            uint256(SpendRouter.SpendStatus.Processing)
+        );
+    }
+
+    function testMarkProcessingOnlyProcessor() public {
+        uint256 spendId = _initiateAsUser();
+
+        vm.prank(user);
+        vm.expectRevert(SpendRouter.UnauthorizedProcessor.selector);
+        router.markProcessing(spendId);
+    }
+
+    function testUserCannotCancelWhileProcessing() public {
+        uint256 spendId = _initiateAsUser();
+
+        vm.prank(processor);
+        router.markProcessing(spendId);
+
+        // Even after the cancel grace period, a Processing spend (bank
+        // transfer in flight) must not be cancellable by the user.
+        vm.warp(block.timestamp + 10 minutes);
+        vm.prank(user);
+        vm.expectRevert(SpendRouter.SpendAlreadyProcessed.selector);
+        router.cancelSpend(spendId);
+    }
+
+    function testCompleteSpendFromProcessing() public {
+        uint256 spendId = _initiateAsUser();
+
+        vm.startPrank(processor);
+        router.markProcessing(spendId);
+        router.completeSpend(spendId, "BANK_REF_123");
+        vm.stopPrank();
+
+        SpendRouter.Spend memory spend = router.getSpend(spendId);
+        assertEq(
+            uint256(spend.status),
+            uint256(SpendRouter.SpendStatus.Completed)
+        );
+    }
+
+    function testRefundSpendFromProcessing() public {
+        uint256 spendId = _initiateAsUser();
+        uint256 userBalanceBefore = usdc.balanceOf(user);
+
+        vm.startPrank(processor);
+        router.markProcessing(spendId);
+        router.refundSpend(spendId, "Bank transfer failed");
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(user), userBalanceBefore + USDC_AMOUNT);
+        SpendRouter.Spend memory spend = router.getSpend(spendId);
+        assertEq(
+            uint256(spend.status),
+            uint256(SpendRouter.SpendStatus.Refunded)
+        );
+    }
+
+    function testEmergencyRefundProcessingRequires24Hours() public {
+        uint256 spendId = _initiateAsUser();
+
+        vm.startPrank(processor);
+        router.markProcessing(spendId);
+
+        // Normal timeout is not enough for a Processing spend
+        vm.warp(block.timestamp + 16 minutes);
+        vm.expectRevert("Processing: not timed out yet");
+        router.emergencyRefund(spendId);
+
+        // After the 24h ops window it succeeds
+        vm.warp(block.timestamp + 24 hours);
+        router.emergencyRefund(spendId);
+        vm.stopPrank();
+
+        SpendRouter.Spend memory spend = router.getSpend(spendId);
+        assertEq(
+            uint256(spend.status),
+            uint256(SpendRouter.SpendStatus.Refunded)
+        );
+    }
 }

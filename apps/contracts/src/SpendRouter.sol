@@ -99,6 +99,8 @@ contract SpendRouter is
 
     event SpendCancelled(uint256 indexed spendId, uint256 timestamp);
 
+    event SpendProcessing(uint256 indexed spendId, uint256 timestamp);
+
     event ProcessorAuthorized(address indexed processor);
 
     event ProcessorRevoked(address indexed processor);
@@ -222,6 +224,26 @@ contract SpendRouter is
     }
 
     /**
+     * @notice Lock a spend before the bank transfer is attempted.
+     * @dev Once Processing, the user can no longer cancel and the standard
+     *      emergency refund is disabled: refunding escrow while NGN is
+     *      in flight would pay the user twice. Only the processor's
+     *      completeSpend/refundSpend (or the 24h stuck-spend refund)
+     *      can resolve a Processing spend.
+     * @param spendId The spend ID to lock
+     */
+    function markProcessing(uint256 spendId) external onlyProcessor {
+        Spend storage spend = spends[spendId];
+
+        if (spend.user == address(0)) revert SpendNotFound();
+        if (spend.status != SpendStatus.Pending) revert SpendAlreadyProcessed();
+
+        spend.status = SpendStatus.Processing;
+
+        emit SpendProcessing(spendId, block.timestamp);
+    }
+
+    /**
      * @notice Complete a spend transaction (called by backend after successful bank transfer)
      * @param spendId The spend ID to complete
      * @param bankTransactionRef Bank transaction reference for audit trail
@@ -233,7 +255,10 @@ contract SpendRouter is
         Spend storage spend = spends[spendId];
 
         if (spend.user == address(0)) revert SpendNotFound();
-        if (spend.status != SpendStatus.Pending) revert SpendAlreadyProcessed();
+        if (
+            spend.status != SpendStatus.Pending &&
+            spend.status != SpendStatus.Processing
+        ) revert SpendAlreadyProcessed();
 
         // Calculate platform fee
         uint256 fee = (spend.usdcAmount * platformFeeBps) / 10000;
@@ -268,7 +293,10 @@ contract SpendRouter is
         Spend storage spend = spends[spendId];
 
         if (spend.user == address(0)) revert SpendNotFound();
-        if (spend.status != SpendStatus.Pending) revert SpendAlreadyProcessed();
+        if (
+            spend.status != SpendStatus.Pending &&
+            spend.status != SpendStatus.Processing
+        ) revert SpendAlreadyProcessed();
 
         // Refund full USDC amount to user
         IERC20(usdcToken).safeTransfer(spend.user, spend.usdcAmount);
@@ -322,9 +350,18 @@ contract SpendRouter is
         Spend storage spend = spends[spendId];
 
         if (spend.user == address(0)) revert SpendNotFound();
-        if (spend.status != SpendStatus.Pending) revert SpendAlreadyProcessed();
-        if (block.timestamp < spend.timestamp + spendTimeout)
-            revert("Not timed out yet");
+        // Pending spends refund after the normal timeout. Processing spends
+        // (bank transfer in flight) only refund after a 24h ops window, so a
+        // slow transfer can't be refunded while the NGN still lands.
+        if (spend.status == SpendStatus.Pending) {
+            if (block.timestamp < spend.timestamp + spendTimeout)
+                revert("Not timed out yet");
+        } else if (spend.status == SpendStatus.Processing) {
+            if (block.timestamp < spend.timestamp + 24 hours)
+                revert("Processing: not timed out yet");
+        } else {
+            revert SpendAlreadyProcessed();
+        }
 
         // Refund USDC to user
         IERC20(usdcToken).safeTransfer(spend.user, spend.usdcAmount);
