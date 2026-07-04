@@ -1,51 +1,30 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  Zap,
-  Shield,
-  Globe,
-} from "lucide-react";
-
-import { TransactionInterface } from "./core/transaction-interface";
+import { motion } from "framer-motion";
+import { SwapInterface } from "@/components/swap/swap-interface-loader";
 
 export function UnifiedInterface() {
   return (
     <div className="min-h-screen pt-24 pb-16 relative overflow-hidden">
-      {/* Animated background orbs */}
+      {/* Ambient background orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {/* Primary blue orb */}
         <div
-          className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full opacity-[0.12]"
+          className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full opacity-[0.12] animate-float"
           style={{
-            background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)",
-            animation: "float 9s ease-in-out infinite",
+            background:
+              "radial-gradient(circle, hsl(var(--brand-blue)) 0%, transparent 70%)",
           }}
         />
-        {/* Secondary green orb */}
         <div
-          className="absolute bottom-[-15%] right-[-8%] w-[600px] h-[600px] rounded-full opacity-[0.08]"
+          className="absolute bottom-[-15%] right-[-8%] w-[600px] h-[600px] rounded-full opacity-[0.08] animate-float-delayed"
           style={{
-            background: "radial-gradient(circle, #10b981 0%, transparent 70%)",
-            animation: "float-delayed 12s ease-in-out infinite",
-          }}
-        />
-        {/* Mid blue accent */}
-        <div
-          className="absolute top-[40%] right-[15%] w-[300px] h-[300px] rounded-full opacity-[0.06]"
-          style={{
-            background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)",
-            animation: "float 15s ease-in-out infinite reverse",
+            background:
+              "radial-gradient(circle, hsl(var(--brand-green)) 0%, transparent 70%)",
           }}
         />
       </div>
 
       <div className="container relative z-10 max-w-lg mx-auto px-4 mt-8">
-        {/* Tagline above card */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -57,7 +36,7 @@ export function UnifiedInterface() {
           </p>
         </motion.div>
 
-        <TransactionInterface />
+        <SwapInterface />
       </div>
     </div>
   );
