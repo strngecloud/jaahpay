@@ -13,9 +13,15 @@ const spaceGrotesk = Space_Grotesk({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Jahpay — USDC ↔ USDT Swap on Celo",
+  title: "Jahpay — Stablecoin Swaps & Bank Payouts on Celo",
   description:
-    "Swap USDC and USDT instantly on Celo with oracle-priced rates, 0.3% fee, and an ERC-8004 AI agent.",
+    "Swap USDC and USDT at oracle-priced rates, send Naira to any Nigerian bank, and get AI-guided execution from an ERC-8004 agent — all on Celo.",
+  openGraph: {
+    title: "Jahpay — Stablecoin Swaps & Bank Payouts on Celo",
+    description:
+      "Oracle-priced USDC ↔ USDT swaps, NGN bank payouts, and an on-chain AI agent. Non-custodial, 0.3% flat fee.",
+    type: "website",
+  },
 };
 
 export default async function RootLayout({

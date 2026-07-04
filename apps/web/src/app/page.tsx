@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
   Zap,
@@ -11,7 +11,7 @@ import {
   ArrowRight,
   RefreshCw,
   TrendingUp,
-  Lock,
+  Landmark,
   Star,
   ExternalLink,
 } from "lucide-react";
@@ -35,10 +35,9 @@ const stagger = {
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const STATS = [
-  { value: "< 5s", label: "Settlement Time" },
-  // { value: "0.3%", label: "Platform Fee" },
-  { value: "Oracle", label: "Pricing Source" },
-  { value: "ERC-8004", label: "AI Standard" },
+  { value: "< 5s", label: "Settlement time" },
+  { value: "Oracle", label: "Pricing source" },
+  { value: "ERC-8004", label: "AI standard" },
 ];
 
 const FEATURES = [
@@ -50,11 +49,11 @@ const FEATURES = [
     border: "border-brand-blue/15",
   },
   {
-    icon: <Bot className="w-5 h-5 text-purple-400" />,
+    icon: <Bot className="w-5 h-5 text-brand-purple" />,
     title: "ERC-8004 AI Agent",
     desc: "An on-chain registered AI agent monitors conditions and recommends optimal slippage in real time.",
-    gradient: "from-purple-500/20 to-violet-600/5",
-    border: "border-purple-500/15",
+    gradient: "from-brand-purple/20 to-violet-600/5",
+    border: "border-brand-purple/15",
   },
   {
     icon: <Zap className="w-5 h-5 text-yellow-400" />,
@@ -78,9 +77,9 @@ const FEATURES = [
     border: "border-cyan-500/15",
   },
   {
-    icon: <Lock className="w-5 h-5 text-rose-400" />,
-    title: "Transparent Fees",
-    desc: "0.3% platform fee shown before every swap. No hidden charges. No surprise deductions.",
+    icon: <Landmark className="w-5 h-5 text-rose-400" />,
+    title: "Bank Payouts in Naira",
+    desc: "Send USDC straight to any Nigerian bank account. Live NGN rates, a flat 0.3% fee, and delivery in minutes.",
     gradient: "from-rose-500/20 to-pink-600/5",
     border: "border-rose-500/15",
   },
@@ -89,22 +88,22 @@ const FEATURES = [
 const STEPS = [
   {
     num: "01",
-    title: "Connect Wallet",
-    desc: "Link any Celo-compatible wallet — Metamask, Valora, or any WalletConnect app.",
+    title: "Connect your wallet",
+    desc: "Link any Celo-compatible wallet — MetaMask, Valora, or any WalletConnect app.",
   },
   {
     num: "02",
-    title: "Enter Amount",
+    title: "Enter an amount",
     desc: "Type how much USDC or USDT you want to swap. A live oracle quote appears instantly.",
   },
   {
     num: "03",
-    title: "AI Reviews",
+    title: "AI reviews conditions",
     desc: "The ERC-8004 agent assesses market conditions and recommends the safest slippage setting.",
   },
   {
     num: "04",
-    title: "Confirm & Swap",
+    title: "Confirm and swap",
     desc: "Review the fee breakdown and confirm. Your swap settles on Celo in under 5 seconds.",
   },
 ];
@@ -123,6 +122,10 @@ const FAQS = [
     a: "0.3% on every swap, deducted from the output amount. It is always shown transparently before you confirm.",
   },
   {
+    q: "Can I send money to a bank account?",
+    a: "Yes. The Spend tab converts your USDC to Naira at a live rate and delivers it to any Nigerian bank account, usually within minutes.",
+  },
+  {
     q: "Do I need CELO for gas?",
     a: "No. Celo's fee abstraction lets you pay gas in USDC or USDT directly.",
   },
@@ -134,29 +137,38 @@ const FAQS = [
 
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
 
-function FAQItem({ q, a }: { q: string; a: string }) {
+function FAQItem({ q, a, id }: { q: string; a: string; id: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <button
-      onClick={() => setOpen((v) => !v)}
-      className="w-full text-left rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-all p-5 group"
-    >
-      <div className="flex items-center justify-between gap-4">
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={id}
+        className="w-full text-left p-5 flex items-center justify-between gap-4"
+      >
         <span className="text-sm font-semibold text-white">{q}</span>
         <ChevronDown
           className={`w-4 h-4 text-white/40 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
-      </div>
-      {open && (
-        <motion.p
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="text-sm text-white/50 mt-3 leading-relaxed"
-        >
-          {a}
-        </motion.p>
-      )}
-    </button>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            id={id}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <p className="text-sm text-white/50 leading-relaxed px-5 pb-5">
+              {a}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -165,12 +177,12 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 export default function Home() {
   return (
     <main className="flex-1 overflow-x-hidden jahpay-bg jahpay-grid relative">
-      {/* ── Animated Overlay Gradients ────────────────────────────── */}
+      {/* ── Ambient overlay gradients ────────────────────────────── */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <motion.div
           animate={{ opacity: [0.2, 0.4, 0.2] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(59,130,246,0.12),transparent_70%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,hsl(var(--brand-blue)/0.12),transparent_70%)]"
         />
         <motion.div
           animate={{ opacity: [0.1, 0.25, 0.1] }}
@@ -180,7 +192,7 @@ export default function Home() {
             ease: "easeInOut",
             delay: 4,
           }}
-          className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgba(139,92,246,0.1),transparent_70%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,hsl(var(--brand-purple)/0.1),transparent_70%)]"
         />
       </div>
 
@@ -222,9 +234,9 @@ export default function Home() {
                 variants={fadeUp}
                 className="text-lg text-slate-400 leading-relaxed max-w-xl"
               >
-                Oracle-aware routing, transparent pricing, and an on-chain AI
-                agent that recommends safer execution settings before every
-                swap.
+                Oracle-aware routing, transparent pricing, bank payouts in
+                Naira, and an on-chain AI agent that recommends safer execution
+                settings before every swap.
               </motion.p>
 
               <motion.div
@@ -233,16 +245,15 @@ export default function Home() {
               >
                 <Link
                   href="/app"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-green text-white font-bold text-base hover:opacity-90 hover:-translate-y-1 transition-all shadow-[0_0_30px_rgba(39,117,202,0.3)] hover:shadow-[0_0_40px_rgba(39,117,202,0.5)] relative overflow-hidden group"
+                  className="btn-cta px-8 py-4 text-base hover:-translate-y-1"
                 >
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="relative z-10 flex items-center gap-2">Go to App <ArrowRight className="w-4 h-4" /></span>
+                  Go to App <ArrowRight className="w-4 h-4" />
                 </Link>
                 <a
                   href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/[0.1] text-white/70 hover:text-white hover:border-white/20 font-medium text-base transition-all"
+                  className="btn-quiet px-8 py-4 text-base"
                 >
                   ERC-8004 Docs <ExternalLink className="w-4 h-4" />
                 </a>
@@ -250,7 +261,7 @@ export default function Home() {
 
               <motion.div
                 variants={fadeUp}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/[0.05]"
+                className="grid grid-cols-3 gap-4 pt-4 border-t border-white/[0.05]"
               >
                 {STATS.map(({ value, label }) => (
                   <div key={label} className="text-center">
@@ -269,16 +280,16 @@ export default function Home() {
               transition={{ delay: 0.25, type: "spring", stiffness: 150 }}
               className="relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/15 to-purple-500/15 rounded-3xl blur-3xl -z-10" />
-              <div className="rounded-3xl border border-white/[0.12] bg-[#0b1222]/85 backdrop-blur-xl p-6 sm:p-7">
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/15 to-brand-purple/15 rounded-3xl blur-3xl -z-10" />
+              <div className="rounded-3xl border border-white/[0.12] bg-surface-1/85 backdrop-blur-xl p-6 sm:p-7">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-wider text-white/40">
                       Jahpay App
                     </p>
-                    <h3 className="text-xl font-bold text-white mt-1">
+                    <h2 className="text-xl font-bold text-white mt-1">
                       Dedicated swap experience
-                    </h3>
+                    </h2>
                   </div>
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/15 border border-brand-green/30 text-xs font-semibold text-brand-green">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" />
@@ -332,7 +343,7 @@ export default function Home() {
 
                 <Link
                   href="/app"
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-green px-5 py-3.5 text-sm font-bold text-white hover:opacity-90 transition-opacity"
+                  className="btn-cta mt-6 w-full px-5 py-3.5 text-sm"
                 >
                   Go to App
                   <ArrowRight className="w-4 h-4" />
@@ -344,8 +355,8 @@ export default function Home() {
       </section>
 
       {/* ── Features ─────────────────────────────────────────────────── */}
-      <section className="relative py-24 lg:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,rgba(16,185,129,0.05),transparent_70%)]" />
+      <section id="features" className="relative py-24 lg:py-32">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,hsl(var(--brand-green)/0.05),transparent_70%)]" />
         <div className="container px-4 mx-auto max-w-7xl relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -353,7 +364,7 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-blue/25 bg-brand-blue/8 text-xs font-semibold text-brand-blue uppercase tracking-wider mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-blue/25 bg-brand-blue/10 text-xs font-semibold text-brand-blue uppercase tracking-wider mb-4">
               Why Jahpay
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-white">
@@ -391,7 +402,7 @@ export default function Home() {
       </section>
 
       {/* ── How It Works ─────────────────────────────────────────────── */}
-      <section className="relative py-24 lg:py-32">
+      <section id="how-it-works" className="relative py-24 lg:py-32">
         <div className="container px-4 mx-auto max-w-5xl relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -399,7 +410,7 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-green/25 bg-brand-green/8 text-xs font-semibold text-brand-green uppercase tracking-wider mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-green/25 bg-brand-green/10 text-xs font-semibold text-brand-green uppercase tracking-wider mb-4">
               Process
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-white">
@@ -471,7 +482,7 @@ export default function Home() {
 
       {/* ── AI Agent Spotlight ────────────────────────────────────────── */}
       <section className="relative py-24 lg:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(139,92,246,0.08),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,hsl(var(--brand-purple)/0.08),transparent_70%)]" />
         <div className="container px-4 mx-auto max-w-5xl relative z-10">
           <div className="grid md:grid-cols-2 gap-14 items-center">
             {/* Agent card mockup */}
@@ -481,15 +492,15 @@ export default function Home() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-brand-blue/10 rounded-3xl blur-2xl -z-10" />
-              <div className="rounded-3xl border border-purple-500/20 bg-[#0a0f1e]/90 backdrop-blur-md p-6 space-y-5">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-purple/20 to-brand-blue/10 rounded-3xl blur-2xl -z-10" />
+              <div className="rounded-3xl border border-brand-purple/20 bg-surface-1/90 backdrop-blur-md p-6 space-y-5">
                 {/* Header */}
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/40 to-blue-500/40 border border-purple-500/30 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-purple/40 to-brand-blue/40 border border-brand-purple/30 flex items-center justify-center">
                       <Bot className="w-5 h-5 text-purple-300" />
                     </div>
-                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-green border-2 border-[#0a0f1e]" />
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-green border-2 border-surface-1" />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-white">
@@ -547,12 +558,12 @@ export default function Home() {
               viewport={{ once: true }}
               className="space-y-6"
             >
-              <span className="inline-block px-3 py-1.5 rounded-full border border-purple-500/25 bg-purple-500/8 text-xs font-semibold text-purple-400 uppercase tracking-wider">
+              <span className="inline-block px-3 py-1.5 rounded-full border border-brand-purple/25 bg-brand-purple/10 text-xs font-semibold text-brand-purple uppercase tracking-wider">
                 AI Agent
               </span>
               <h2 className="text-4xl font-bold text-white leading-tight">
                 An AI that earns trust{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-brand-blue">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple to-brand-blue">
                   on-chain.
                 </span>
               </h2>
@@ -584,7 +595,7 @@ export default function Home() {
                 href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-purple hover:text-purple-300 transition-colors"
               >
                 Learn about ERC-8004 <ExternalLink className="w-4 h-4" />
               </a>
@@ -594,7 +605,7 @@ export default function Home() {
       </section>
 
       {/* ── FAQ ──────────────────────────────────────────────────────── */}
-      <section className="relative py-24 lg:py-32">
+      <section id="faq" className="relative py-24 lg:py-32">
         <div className="container px-4 mx-auto max-w-3xl relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -605,8 +616,8 @@ export default function Home() {
             <h2 className="text-4xl font-bold text-white">Frequently asked.</h2>
           </motion.div>
           <div className="space-y-3">
-            {FAQS.map((faq) => (
-              <FAQItem key={faq.q} {...faq} />
+            {FAQS.map((faq, i) => (
+              <FAQItem key={faq.q} {...faq} id={`faq-answer-${i}`} />
             ))}
           </div>
         </div>
@@ -614,7 +625,7 @@ export default function Home() {
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <section className="relative py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,hsl(var(--brand-blue)/0.1),transparent_70%)]" />
         <div className="container px-4 mx-auto max-w-3xl text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -629,18 +640,17 @@ export default function Home() {
               Connect your wallet and let the AI agent guide your first swap.
             </p>
             <div className="flex justify-center gap-4 flex-wrap">
-              <a
-                href="app"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-green text-white font-bold hover:opacity-90 hover:-translate-y-1 transition-all shadow-[0_0_30px_rgba(39,117,202,0.3)] hover:shadow-[0_0_40px_rgba(39,117,202,0.5)] relative overflow-hidden group"
+              <Link
+                href="/app"
+                className="btn-cta px-8 py-4 hover:-translate-y-1"
               >
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative z-10 flex items-center gap-2">Launch Swap <ArrowRight className="w-4 h-4" /></span>
-              </a>
+                Go to App <ArrowRight className="w-4 h-4" />
+              </Link>
               <a
                 href="https://celoscan.io/token/0xcebA9300f2b948710d2653dD7B07f33A8B32118C"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl border border-white/[0.1] text-white/60 hover:text-white hover:border-white/20 font-medium transition-all"
+                className="btn-quiet px-8 py-4"
               >
                 View on CeloScan <ExternalLink className="w-4 h-4" />
               </a>
