@@ -10,6 +10,8 @@
     "type-check": "tsc --noEmit",
     "deploy:agent": "tsx scripts/deploy-agent.ts",
     "test:swap": "tsx scripts/test-swap-flow.ts",
+    "bot:arb": "tsx scripts/arb-bot.ts",
+    "bot:sweep": "tsx scripts/sweep-fees.ts",
     "clean": "tsx scripts/clean.ts"
   },
   "dependencies": {
