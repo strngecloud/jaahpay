@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { computeRecommendation } from '@/lib/agent/agent-intelligence';
 import { withRateLimit } from '@/lib/api/middleware';
+import { withX402, X402_PRICES } from '@/lib/api/x402';
 
 export const runtime = 'nodejs';
 
@@ -33,5 +34,12 @@ async function handler(req: NextRequest) {
   }
 }
 
-// Apply rate limiting: 30 requests per minute
-export const POST = withRateLimit(handler, { limit: 30, window: 60000 });
+// x402-paid for external agents ($0.002/request); free for the Jahpay app itself
+export const POST = withRateLimit(
+  withX402(handler, {
+    price: X402_PRICES.SMALL,
+    description: 'Jahpay AI swap recommendation (slippage, timing, route)',
+    allowSameOrigin: true,
+  }),
+  { limit: 30, window: 60000 },
+);

@@ -1,119 +1,24 @@
+import { NextRequest } from "next/server";
+import { withX402, X402_PRICES } from "@/lib/api/x402";
+
 export const runtime = "edge";
 
 /**
  * Premium AI Market Analysis Endpoint
  * Gated by x402 (Agent Payments Layer)
- * Requires a $0.05 USDC payment on Celo mainnet to access.
- *
- * Payments are verified and settled through the Celo x402 facilitator
- * (https://api.x402.celo.org) so each pay-per-request payment lands
- * on-chain on Celo, credited to the Jahpay fee collector (payTo).
+ * Requires a $0.05 USDC payment on Celo mainnet, verified and settled
+ * through the Celo x402 facilitator.
  */
 
-const FACILITATOR_URL = "https://api.x402.celo.org";
-const CELO_USDC = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C";
-/** $0.05 in USDC atomic units (6 decimals) */
-const PRICE_ATOMIC = "50000";
-
-function buildPaymentRequirements(resourceUrl: string, payTo: string) {
-  return {
-    scheme: "exact",
-    network: "celo",
-    maxAmountRequired: PRICE_ATOMIC,
-    resource: resourceUrl,
-    description: "Jahpay Premium AI Market Analysis",
-    mimeType: "application/json",
-    payTo,
-    maxTimeoutSeconds: 300,
-    asset: CELO_USDC,
-    extra: { name: "USDC", version: "2" },
-  };
-}
-
-function paymentRequired(resourceUrl: string, payTo: string, error: string) {
-  return Response.json(
-    {
-      x402Version: 1,
-      error,
-      accepts: [buildPaymentRequirements(resourceUrl, payTo)],
-    },
-    { status: 402 }
-  );
-}
-
-export async function GET(request: Request) {
-  const payTo = process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS;
-  if (!payTo) {
-    return Response.json(
-      { error: "Server configuration error: FEE_COLLECTOR_ADDRESS not set" },
-      { status: 500 }
-    );
-  }
-
-  const resourceUrl = request.url;
-  const paymentHeader =
-    request.headers.get("X-PAYMENT") || request.headers.get("PAYMENT-SIGNATURE");
-
-  if (!paymentHeader) {
-    return paymentRequired(resourceUrl, payTo, "X-PAYMENT header is required");
-  }
-
-  // Decode the base64 payment payload signed by the buyer
-  let paymentPayload: unknown;
-  try {
-    paymentPayload = JSON.parse(atob(paymentHeader));
-  } catch {
-    return paymentRequired(resourceUrl, payTo, "Invalid X-PAYMENT header");
-  }
-
-  const paymentRequirements = buildPaymentRequirements(resourceUrl, payTo);
-  const facilitatorBody = JSON.stringify({
-    x402Version: 1,
-    paymentPayload,
-    paymentRequirements,
-  });
-
-  // Verify the payment signature with the Celo facilitator
-  const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: facilitatorBody,
-  });
-  const verification = await verifyRes.json();
-  if (!verification.isValid) {
-    return paymentRequired(
-      resourceUrl,
-      payTo,
-      verification.invalidReason || "Payment verification failed"
-    );
-  }
-
-  // Settle the payment on-chain (facilitator submits the EIP-3009 transfer)
-  const settleRes = await fetch(`${FACILITATOR_URL}/settle`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: facilitatorBody,
-  });
-  const settlement = await settleRes.json();
-  if (!settlement.success) {
-    return paymentRequired(
-      resourceUrl,
-      payTo,
-      settlement.errorReason || "Payment settlement failed"
-    );
-  }
-
+async function handler(_req: NextRequest) {
   const analysis = await generatePremiumAnalysis();
-  return Response.json(
-    { data: analysis },
-    {
-      headers: {
-        // x402 v1 receipt header so the client can read the settlement tx
-        "X-PAYMENT-RESPONSE": btoa(JSON.stringify(settlement)),
-      },
-    }
-  );
+  return Response.json({ data: analysis });
 }
+
+export const GET = withX402(handler, {
+  price: X402_PRICES.PREMIUM,
+  description: "Jahpay Premium AI Market Analysis",
+});
 
 async function generatePremiumAnalysis() {
   const { getMarketSnapshot } = await import('@/lib/agent/agent-intelligence');

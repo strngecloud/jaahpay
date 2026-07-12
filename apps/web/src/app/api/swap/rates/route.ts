@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketSnapshot } from '@/lib/agent/agent-intelligence';
 import { withRateLimit } from '@/lib/api/middleware';
+import { withX402, X402_PRICES } from '@/lib/api/x402';
 
 export const runtime = 'nodejs';
 
@@ -38,5 +39,11 @@ async function handler(req: NextRequest) {
   }
 }
 
-// Apply rate limiting: 100 requests per minute
-export const GET = withRateLimit(handler, { limit: 100, window: 60000 });
+// x402-paid endpoint ($0.001/request) with rate limiting: 100 requests per minute
+export const GET = withRateLimit(
+  withX402(handler, {
+    price: X402_PRICES.MICRO,
+    description: 'Jahpay live Mento market rates snapshot (USDC/USDT/CELO)',
+  }),
+  { limit: 100, window: 60000 },
+);

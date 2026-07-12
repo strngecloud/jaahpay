@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processAgentMessage } from '@/lib/agent/agent-intelligence';
 import type { SwapTokenSymbol } from '@/lib/swap/usdc-usdt-swap';
 import { withRateLimit } from '@/lib/api/middleware';
+import { withX402, X402_PRICES } from '@/lib/api/x402';
 
 export const runtime = 'nodejs';
 
@@ -33,5 +34,12 @@ async function handler(req: NextRequest) {
   }
 }
 
-// Apply rate limiting: 20 messages per minute
-export const POST = withRateLimit(handler, { limit: 20, window: 60000 });
+// x402-paid for external agents ($0.005/message); free for the Jahpay app itself
+export const POST = withRateLimit(
+  withX402(handler, {
+    price: X402_PRICES.MEDIUM,
+    description: 'Chat with the Jahpay swap agent (live Mento market context)',
+    allowSameOrigin: true,
+  }),
+  { limit: 20, window: 60000 },
+);

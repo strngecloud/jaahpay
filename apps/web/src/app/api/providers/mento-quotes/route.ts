@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMentoQuote, isMentoPairTradable } from '@/lib/mento/mento-swap';
 import { withRateLimit } from '@/lib/api/middleware';
+import { withX402, X402_PRICES } from '@/lib/api/x402';
 
 /**
  * GET /api/providers/mento-quotes
@@ -65,5 +66,11 @@ async function handler(request: NextRequest) {
 }
 
 
-// Apply rate limiting: 60 requests per minute
-export const GET = withRateLimit(handler, { limit: 60, window: 60000 });
+// x402-paid endpoint ($0.001/request) with rate limiting: 60 requests per minute
+export const GET = withRateLimit(
+  withX402(handler, {
+    price: X402_PRICES.MICRO,
+    description: 'Jahpay oracle-priced Mento swap quote',
+  }),
+  { limit: 60, window: 60000 },
+);
