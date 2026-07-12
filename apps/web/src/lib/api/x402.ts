@@ -107,13 +107,21 @@ export function withX402(
       );
     }
 
-    if (options.allowSameOrigin && isSameOriginBrowserRequest(req)) {
-      return handler(req);
-    }
-
     const resourceUrl = req.url;
     const paymentHeader =
       req.headers.get("X-PAYMENT") || req.headers.get("PAYMENT-SIGNATURE");
+
+    // Same-origin free pass for the app's own UI — unless the caller is
+    // already offering a payment or explicitly opted in via ?x402=pay
+    // (used by the playground so its calls always settle on-chain).
+    if (
+      options.allowSameOrigin &&
+      !paymentHeader &&
+      !req.nextUrl.searchParams.has("x402") &&
+      isSameOriginBrowserRequest(req)
+    ) {
+      return handler(req);
+    }
 
     if (!paymentHeader) {
       return paymentRequired(
