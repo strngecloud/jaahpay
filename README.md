@@ -44,7 +44,7 @@ cp apps/web/.env.minipay.example apps/web/.env.local
 pnpm dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to see the app.
+Visit [http://jahpay.xyz](http://jahpay.xyz) to see the app.
 
 ## Project Structure
 
@@ -169,5 +169,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ---
 
 <div align="center">
-  Built with ❤️ for financial inclusion on Celo
+  Jahpay's attribution tag is: celo_cc9e2c49ca49 ❤️
 </div>

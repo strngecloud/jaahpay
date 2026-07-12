@@ -15,6 +15,7 @@ import {
   type Address,
 } from 'viem';
 import { celo } from 'viem/chains';
+import { toDataSuffix } from '@celo/attribution-tags';
 import {
   SWAP_TOKENS,
   SUPPORTED_TOKENS,
@@ -23,6 +24,7 @@ import {
   UNISWAP_POOL_FEE,
   SWAP_CONFIG,
   JAHPAY_ROUTER_ADDRESS,
+  CELO_BUILDERS_ATTRIBUTION_TAG,
 } from '../minipay/constants';
 import type { SwapQuote, SwapTransaction, SwapTokenSymbol } from './usdc-usdt-swap';
 
@@ -270,6 +272,11 @@ export async function buildUniswapSwapTransaction(
     ],
   });
 
+  // Append the Celo Builders attribution tag (ERC-8021 data suffix) so this
+  // transaction is counted toward the hackathon leaderboard.
+  const taggedRouterData = (routerData +
+    toDataSuffix(CELO_BUILDERS_ATTRIBUTION_TAG).slice(2)) as `0x${string}`;
+
   // Build approval tx if swapping FROM an ERC-20 (USDC/USDT → CELO)
   let approval: {
     to: Address;
@@ -306,7 +313,7 @@ export async function buildUniswapSwapTransaction(
     swap: {
       params: {
         to: JAHPAY_ROUTER_ADDRESS as Address,
-        data: routerData,
+        data: taggedRouterData,
         ...(isFromCelo ? { value: amountInParsed } : {}),
       },
     },

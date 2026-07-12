@@ -95,6 +95,9 @@ export const JAHPAY_ROUTER_ADDRESS =
   process.env.NEXT_PUBLIC_JAHPAY_ROUTER_ADDRESS ||
   '0x0000000000000000000000000000000000000000';
 
+/** Celo Builders (celobuilders.xyz) attribution tag — appended as an ERC-8021 data suffix to swap transactions so on-chain volume counts on the hackathon leaderboard */
+export const CELO_BUILDERS_ATTRIBUTION_TAG = 'celo_cc9e2c49ca49';
+
 
 // ─── ERC-8004 Agent ───────────────────────────────────────────────────────────
 
