@@ -68,6 +68,8 @@ export interface SwapQuote {
   rate: number;
   /** Is this a direct swap or routed via USDm? */
   route: 'direct' | 'via-usdm' | 'uniswap-v3';
+  /** Uniswap V3 pool fee tier used for this quote (uniswap-v3 route only) */
+  feeTier?: number;
   /** Slippage tolerance in BPS used for this quote */
   slippageBps: number;
   /** Is the pair currently tradable? */
