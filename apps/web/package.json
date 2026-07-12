@@ -13,6 +13,7 @@
     "clean": "tsx scripts/clean.ts"
   },
   "dependencies": {
+    "@celo/attribution-tags": "^0.3.0",
     "@chaoschain/sdk": "^0.3.3",
     "@mento-protocol/mento-sdk": "^3.0.0",
     "@radix-ui/react-avatar": "^1.1.11",
