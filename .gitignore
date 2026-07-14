@@ -108,3 +108,6 @@ apps/contracts/cache/
 apps/contracts/broadcast/
 apps/contracts/lib/
 *.gas-snapshot
+
+# Sentry
+.env.sentry-build-plugin
