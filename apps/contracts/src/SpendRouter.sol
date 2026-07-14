@@ -2,24 +2,12 @@
 pragma solidity ^0.8.27;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {
-    Initializable
-} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {
-    UUPSUpgradeable
-} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {
-    ReentrancyGuardUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {
-    PausableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
  * @title SpendRouter
@@ -85,17 +73,9 @@ contract SpendRouter is
         bytes32 recipientHash
     );
 
-    event SpendCompleted(
-        uint256 indexed spendId,
-        string bankTransactionRef,
-        uint256 timestamp
-    );
+    event SpendCompleted(uint256 indexed spendId, string bankTransactionRef, uint256 timestamp);
 
-    event SpendRefunded(
-        uint256 indexed spendId,
-        string reason,
-        uint256 timestamp
-    );
+    event SpendRefunded(uint256 indexed spendId, string reason, uint256 timestamp);
 
     event SpendCancelled(uint256 indexed spendId, uint256 timestamp);
 
@@ -135,18 +115,17 @@ contract SpendRouter is
      * @param _feeCollector Fee collector address
      * @param _platformFeeBps Platform fee in basis points (e.g., 30 for 0.3%)
      */
-    function initialize(
-        address initialOwner,
-        address _usdcToken,
-        address _feeCollector,
-        uint256 _platformFeeBps
-    ) public initializer {
+    function initialize(address initialOwner, address _usdcToken, address _feeCollector, uint256 _platformFeeBps)
+        public
+        initializer
+    {
         __Ownable_init(initialOwner);
         __ReentrancyGuard_init();
         __Pausable_init();
 
-        if (_usdcToken == address(0) || _feeCollector == address(0))
+        if (_usdcToken == address(0) || _feeCollector == address(0)) {
             revert InvalidAddress();
+        }
 
         usdcToken = _usdcToken;
         feeCollector = _feeCollector;
@@ -155,9 +134,7 @@ contract SpendRouter is
         spendTimeout = 15 minutes; // Default timeout
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // ============ Modifiers ============
 
@@ -177,20 +154,17 @@ contract SpendRouter is
      * @param recipientHash Keccak256 hash of recipient details (for privacy)
      * @return spendId The unique ID for this spend transaction
      */
-    function initiateSpend(
-        uint256 usdcAmount,
-        uint256 ngnAmount,
-        bytes32 recipientHash
-    ) external nonReentrant whenNotPaused returns (uint256 spendId) {
+    function initiateSpend(uint256 usdcAmount, uint256 ngnAmount, bytes32 recipientHash)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 spendId)
+    {
         if (usdcAmount == 0 || ngnAmount == 0) revert InvalidAmount();
         if (recipientHash == bytes32(0)) revert InvalidAddress();
 
         // Transfer USDC from user to this contract (escrow)
-        IERC20(usdcToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            usdcAmount
-        );
+        IERC20(usdcToken).safeTransferFrom(msg.sender, address(this), usdcAmount);
 
         // Create spend record
         spendId = nextSpendId++;
@@ -211,14 +185,7 @@ contract SpendRouter is
         }
         userDailySpent[msg.sender] += usdcAmount;
 
-        emit SpendInitiated(
-            spendId,
-            msg.sender,
-            usdcAmount,
-            ngnAmount,
-            block.timestamp,
-            recipientHash
-        );
+        emit SpendInitiated(spendId, msg.sender, usdcAmount, ngnAmount, block.timestamp, recipientHash);
 
         return spendId;
     }
@@ -248,17 +215,13 @@ contract SpendRouter is
      * @param spendId The spend ID to complete
      * @param bankTransactionRef Bank transaction reference for audit trail
      */
-    function completeSpend(
-        uint256 spendId,
-        string calldata bankTransactionRef
-    ) external onlyProcessor {
+    function completeSpend(uint256 spendId, string calldata bankTransactionRef) external onlyProcessor {
         Spend storage spend = spends[spendId];
 
         if (spend.user == address(0)) revert SpendNotFound();
-        if (
-            spend.status != SpendStatus.Pending &&
-            spend.status != SpendStatus.Processing
-        ) revert SpendAlreadyProcessed();
+        if (spend.status != SpendStatus.Pending && spend.status != SpendStatus.Processing) {
+            revert SpendAlreadyProcessed();
+        }
 
         // Calculate platform fee
         uint256 fee = (spend.usdcAmount * platformFeeBps) / 10000;
@@ -286,17 +249,13 @@ contract SpendRouter is
      * @param spendId The spend ID to refund
      * @param reason Reason for refund (for audit trail)
      */
-    function refundSpend(
-        uint256 spendId,
-        string calldata reason
-    ) external onlyProcessor {
+    function refundSpend(uint256 spendId, string calldata reason) external onlyProcessor {
         Spend storage spend = spends[spendId];
 
         if (spend.user == address(0)) revert SpendNotFound();
-        if (
-            spend.status != SpendStatus.Pending &&
-            spend.status != SpendStatus.Processing
-        ) revert SpendAlreadyProcessed();
+        if (spend.status != SpendStatus.Pending && spend.status != SpendStatus.Processing) {
+            revert SpendAlreadyProcessed();
+        }
 
         // Refund full USDC amount to user
         IERC20(usdcToken).safeTransfer(spend.user, spend.usdcAmount);
@@ -354,11 +313,13 @@ contract SpendRouter is
         // (bank transfer in flight) only refund after a 24h ops window, so a
         // slow transfer can't be refunded while the NGN still lands.
         if (spend.status == SpendStatus.Pending) {
-            if (block.timestamp < spend.timestamp + spendTimeout)
+            if (block.timestamp < spend.timestamp + spendTimeout) {
                 revert("Not timed out yet");
+            }
         } else if (spend.status == SpendStatus.Processing) {
-            if (block.timestamp < spend.timestamp + 24 hours)
+            if (block.timestamp < spend.timestamp + 24 hours) {
                 revert("Processing: not timed out yet");
+            }
         } else {
             revert SpendAlreadyProcessed();
         }
@@ -418,10 +379,7 @@ contract SpendRouter is
      * @param _timeout New timeout in seconds
      */
     function setSpendTimeout(uint256 _timeout) external onlyOwner {
-        require(
-            _timeout >= 5 minutes && _timeout <= 1 hours,
-            "Invalid timeout"
-        );
+        require(_timeout >= 5 minutes && _timeout <= 1 hours, "Invalid timeout");
         spendTimeout = _timeout;
         emit SpendTimeoutUpdated(_timeout);
     }
@@ -447,9 +405,7 @@ contract SpendRouter is
      * @param spendId The spend ID
      * @return spend The spend struct
      */
-    function getSpend(
-        uint256 spendId
-    ) external view returns (Spend memory spend) {
+    function getSpend(uint256 spendId) external view returns (Spend memory spend) {
         return spends[spendId];
     }
 
@@ -458,9 +414,7 @@ contract SpendRouter is
      * @param user User address
      * @return amount Amount spent today
      */
-    function getUserDailySpent(
-        address user
-    ) external view returns (uint256 amount) {
+    function getUserDailySpent(address user) external view returns (uint256 amount) {
         uint256 currentDay = block.timestamp / 1 days;
         if (userLastSpendDay[user] == currentDay) {
             return userDailySpent[user];
@@ -473,11 +427,8 @@ contract SpendRouter is
      * @param spendId The spend ID
      * @return hasTimedOut Boolean indicating timeout status
      */
-    function hasSpendTimedOut(
-        uint256 spendId
-    ) external view returns (bool hasTimedOut) {
+    function hasSpendTimedOut(uint256 spendId) external view returns (bool hasTimedOut) {
         Spend memory spend = spends[spendId];
-        return (spend.status == SpendStatus.Pending &&
-            block.timestamp >= spend.timestamp + spendTimeout);
+        return (spend.status == SpendStatus.Pending && block.timestamp >= spend.timestamp + spendTimeout);
     }
 }
