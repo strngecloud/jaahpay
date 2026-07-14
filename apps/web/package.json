@@ -11,7 +11,9 @@
     "deploy:agent": "tsx scripts/deploy-agent.ts",
     "test:swap": "tsx scripts/test-swap-flow.ts",
     "bot:arb": "tsx scripts/arb-bot.ts",
+    "bot:x402": "tsx scripts/x402-agent.ts",
     "bot:sweep": "tsx scripts/sweep-fees.ts",
+    "router:admin": "tsx scripts/router-admin.ts",
     "clean": "tsx scripts/clean.ts"
   },
   "dependencies": {
