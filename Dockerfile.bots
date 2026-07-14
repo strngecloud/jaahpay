@@ -1,0 +1,29 @@
+# Runs Jahpay's standalone bot scripts (bot:x402, bot:arb, bot:sweep,
+# router:admin) as a long-lived process — separate from the Next.js app,
+# which deploys on Vercel instead. Build once, pick the command per service.
+#
+# Deploy (e.g. Railway): create a service from this Dockerfile, set the
+# start command to one of:
+#   pnpm --filter jahpay run bot:x402
+#   pnpm --filter jahpay run bot:arb
+# and set env vars in the host's dashboard — never bake secrets into the image.
+
+FROM node:22-alpine
+
+RUN corepack enable && corepack prepare pnpm@11.1.0 --activate
+
+WORKDIR /app
+
+# Install across the whole workspace so the pnpm-lock.yaml resolves correctly.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY apps/server/package.json apps/server/package.json
+
+RUN pnpm install --frozen-lockfile --filter jahpay
+
+COPY apps/web apps/web
+
+WORKDIR /app/apps/web
+
+# Overridden per-service by the host's "start command" setting.
+CMD ["pnpm", "run", "bot:x402"]
