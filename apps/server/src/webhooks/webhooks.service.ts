@@ -2,12 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { SpendEntity } from '../database/entities/spend.entity';
 import { WebhookLogEntity } from '../database/entities/webhook-log.entity';
 import { SpendStatus, BankProvider } from '../common/types/spend.types';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { RedisService } from '../redis/redis.service';
+import { SpendLimitService } from '../spend/services/spend-limit.service';
 
 @Injectable()
 export class WebhooksService {
@@ -21,56 +22,74 @@ export class WebhooksService {
     private readonly webhookLogRepo: Repository<WebhookLogEntity>,
     private readonly blockchainService: BlockchainService,
     private readonly redisService: RedisService,
+    private readonly spendLimitService: SpendLimitService,
   ) {}
+
+  /**
+   * Compare an HMAC SHA512 hex digest of the raw request body against the
+   * provider-supplied signature, in constant time. Signing the raw bytes
+   * (not a re-serialized JSON object) is required: JSON.stringify does not
+   * guarantee the same key order or whitespace the provider signed.
+   */
+  private verifyHmacSignature(
+    rawBody: Buffer | undefined,
+    signature: string,
+    secret: string | undefined,
+    provider: string,
+  ): boolean {
+    if (!signature || !rawBody) return false;
+
+    if (!secret) {
+      this.logger.error(`${provider} webhook secret not configured`);
+      return false;
+    }
+
+    try {
+      const computed = createHmac('sha512', secret)
+        .update(rawBody)
+        .digest('hex');
+
+      const computedBuf = Buffer.from(computed, 'utf8');
+      const signatureBuf = Buffer.from(signature, 'utf8');
+
+      return (
+        computedBuf.length === signatureBuf.length &&
+        timingSafeEqual(computedBuf, signatureBuf)
+      );
+    } catch (error) {
+      this.logger.error(`Error verifying ${provider} signature:`, error);
+      return false;
+    }
+  }
 
   /**
    * Verify Wema webhook signature using HMAC SHA512
    */
-  verifyWemaSignature(payload: any, signature: string): Promise<boolean> {
-    if (!signature) return Promise.resolve(false);
-
-    const saltKey = this.configService.get<string>('WEMA_SALT_KEY');
-    if (!saltKey) {
-      this.logger.error('WEMA_SALT_KEY not configured');
-      return Promise.resolve(false);
-    }
-
-    try {
-      const payloadString = JSON.stringify(payload);
-      const hmac = createHmac('sha512', saltKey);
-      hmac.update(payloadString);
-      const computedSignature = hmac.digest('hex');
-
-      return Promise.resolve(computedSignature === signature);
-    } catch (error) {
-      this.logger.error('Error verifying Wema signature:', error);
-      return Promise.resolve(false);
-    }
+  verifyWemaSignature(
+    rawBody: Buffer | undefined,
+    signature: string,
+  ): boolean {
+    return this.verifyHmacSignature(
+      rawBody,
+      signature,
+      this.configService.get<string>('WEMA_SALT_KEY'),
+      'Wema',
+    );
   }
 
   /**
    * Verify Paystack webhook signature using HMAC SHA512
    */
-  verifyPaystackSignature(payload: any, signature: string): Promise<boolean> {
-    if (!signature) return Promise.resolve(false);
-
-    const secretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY');
-    if (!secretKey) {
-      this.logger.error('PAYSTACK_SECRET_KEY not configured');
-      return Promise.resolve(false);
-    }
-
-    try {
-      const payloadString = JSON.stringify(payload);
-      const hmac = createHmac('sha512', secretKey);
-      hmac.update(payloadString);
-      const computedSignature = hmac.digest('hex');
-
-      return Promise.resolve(computedSignature === signature);
-    } catch (error) {
-      this.logger.error('Error verifying Paystack signature:', error);
-      return Promise.resolve(false);
-    }
+  verifyPaystackSignature(
+    rawBody: Buffer | undefined,
+    signature: string,
+  ): boolean {
+    return this.verifyHmacSignature(
+      rawBody,
+      signature,
+      this.configService.get<string>('PAYSTACK_SECRET_KEY'),
+      'Paystack',
+    );
   }
 
   /**
@@ -89,17 +108,17 @@ export class WebhooksService {
       return;
     }
 
-    // Mark as processed (24 hour expiry)
-    await this.redisService.setex(idempotencyKey, 86400, 'processed');
-
     // Log webhook
-    await this.webhookLogRepo.save({
-      provider: BankProvider.WEMA,
-      webhookId: transactionReference,
-      payload,
-      processedAt: new Date(),
-      status: 'received',
-    });
+    await this.webhookLogRepo.upsert(
+      {
+        provider: BankProvider.WEMA,
+        webhookId: transactionReference,
+        payload,
+        processedAt: new Date(),
+        status: 'received',
+      },
+      ['webhookId'],
+    );
 
     // Find spend by bank reference
     const spend = await this.spendRepo.findOne({
@@ -122,6 +141,10 @@ export class WebhooksService {
         payload.message || 'Transfer failed',
       );
     }
+
+    // Only mark processed once processing actually succeeded, so a retry
+    // after a mid-processing crash is not silently skipped (24 hour expiry).
+    await this.redisService.setex(idempotencyKey, 86400, 'processed');
   }
 
   /**
@@ -146,16 +169,17 @@ export class WebhooksService {
       return;
     }
 
-    await this.redisService.setex(idempotencyKey, 86400, 'processed');
-
     // Log webhook
-    await this.webhookLogRepo.save({
-      provider: BankProvider.PAYSTACK,
-      webhookId: reference,
-      payload,
-      processedAt: new Date(),
-      status: 'received',
-    });
+    await this.webhookLogRepo.upsert(
+      {
+        provider: BankProvider.PAYSTACK,
+        webhookId: reference,
+        payload,
+        processedAt: new Date(),
+        status: 'received',
+      },
+      ['webhookId'],
+    );
 
     // Find spend by bank reference
     const spend = await this.spendRepo.findOne({
@@ -173,6 +197,10 @@ export class WebhooksService {
     } else {
       await this.handleFailedTransfer(spend, data.message || 'Transfer failed');
     }
+
+    // Only mark processed once processing actually succeeded, so a retry
+    // after a mid-processing crash is not silently skipped (24 hour expiry).
+    await this.redisService.setex(idempotencyKey, 86400, 'processed');
   }
 
   /**
@@ -239,6 +267,12 @@ export class WebhooksService {
       spend.status = SpendStatus.FAILED;
       spend.errorMessage = reason;
       await this.spendRepo.save(spend);
+
+      // Give the reserved amount back to the user's limits
+      await this.spendLimitService.releaseSpend(
+        spend.userAddress,
+        spend.usdcAmount + spend.platformFeeUsdc,
+      );
 
       this.logger.log(
         `Bank transfer failed for spend ${spend.spendId}: ${reason}`,

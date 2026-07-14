@@ -1,7 +1,7 @@
 export const SiteConfig = {
-  name: 'jahpay DApp',
+  name: 'Jahpay',
   description:
-    'Oracle-priced USDC ↔ USDT swaps on Celo powered by Mento Protocol',
+    'Oracle-priced stablecoin swaps and bank payouts on Celo, powered by Mento Protocol',
   url: 'https://jahpay.vercel.app',
   ogImage: 'https://jahpay.vercel.app/og.jpg',
   links: {

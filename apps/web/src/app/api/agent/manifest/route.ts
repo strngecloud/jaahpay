@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { AGENT_CONFIG } from '@/lib/minipay/constants';
+import { getX402PayTo } from '@/lib/api/x402';
 
 export const runtime = 'edge';
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://jahpay.xyz';
 
 /**
  * ERC-8004 Agent Manifest
@@ -14,19 +17,20 @@ export async function GET() {
     name: AGENT_CONFIG.name,
     description: AGENT_CONFIG.description,
     version: '1.0.0',
-    image: 'https://jahpay.app/agent-avatar.png',
+    image: `${BASE_URL}/agent-avatar.png`,
     endpoints: [
       {
         type: 'a2a',
-        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://jahpay.app'}/.well-known/agent.json`,
+        url: `${BASE_URL}/.well-known/agent.json`,
       },
       {
-        type: 'mcp',
-        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://jahpay.app'}/api/agent/mcp`,
+        type: 'x402',
+        url: `${BASE_URL}/api/agent/catalog`,
+        description: 'Catalog of pay-per-request x402 services (USDC on Celo)',
       },
       {
         type: 'wallet',
-        address: process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS || '0x0000000000000000000000000000000000000000',
+        address: getX402PayTo() || '0x0000000000000000000000000000000000000000',
         chainId: AGENT_CONFIG.chainId,
       },
     ],
@@ -47,8 +51,8 @@ export async function GET() {
       chainId: 42220,
     },
     links: {
-      app: 'https://jahpay.app',
-      docs: 'https://github.com/caxtonacollins/Jahpay',
+      app: BASE_URL,
+      docs: 'https://github.com/strngecloud/jaahpay',
     },
   };
 

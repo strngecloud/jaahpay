@@ -29,6 +29,6 @@ import { LedgerModule } from '../ledger/ledger.module';
     SpendLimitService,
     SpendTimeoutService,
   ],
-  exports: [SpendProcessorService],
+  exports: [SpendProcessorService, SpendLimitService],
 })
 export class SpendModule {}

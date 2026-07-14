@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, ArrowUpRight } from "lucide-react";
+import { Menu, ArrowUpRight, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -19,18 +19,16 @@ export function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollPos = window.pageYOffset;
-      const isScrollingDown = currentScrollPos > prevScrollPos;
+      const currentScrollPos = window.scrollY;
 
-      // Always show navbar when scrolling to the top of the page
+      // Always show navbar near the top of the page
       if (currentScrollPos < 10) {
         setVisible(true);
         setPrevScrollPos(currentScrollPos);
         return;
       }
 
-      // Only set the navbar to visible if user is scrolling up
-      setVisible(!isScrollingDown);
+      setVisible(currentScrollPos < prevScrollPos);
       setPrevScrollPos(currentScrollPos);
     };
 
@@ -41,93 +39,110 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 w-full bg-transparent transition-transform duration-300 ease-in-out",
+        "fixed top-0 left-0 right-0 z-50 w-full surface-glass border-b border-white/[0.05] transition-transform duration-300 ease-in-out",
         visible ? "translate-y-0" : "-translate-y-full",
       )}
-      style={{
-        background: "rgba(0, 0, 0, 0.2)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-      }}
     >
       <div className="container flex h-20 items-center justify-between px-6 md:px-8">
-        {/* Left side - Logo */}
         <Link
           href="/"
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          aria-label="Jahpay home"
         >
           <Image
             src="/images/logo_name.png"
-            alt="jahpay logo"
+            alt="Jahpay"
             width={120}
             height={20}
-            className="rounded-lg"
             style={{ height: "auto" }}
             priority
           />
         </Link>
 
-        {/* Right side - Desktop nav and mobile menu button */}
-        <div className="flex items-center gap-4">
-          {/* Mobile Menu Button */}
+        <div className="flex items-center gap-3">
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex items-center gap-3">
+            {!isAppPage ? (
+              <Button variant="outline" asChild>
+                <Link href="/app">
+                  Go to App
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="ghost" asChild>
+                <Link href="/transactions">
+                  <History className="h-4 w-4" />
+                  Transactions
+                </Link>
+              </Button>
+            )}
+          </nav>
+
+          <WalletConnectButton />
+
+          {/* Mobile menu */}
           <Sheet>
             <SheetTrigger asChild>
               <Button
-                variant="gradient"
+                variant="ghost"
                 size="icon"
-                className="md:hidden text-white hover:bg-gray-800"
+                className="md:hidden"
+                aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-72 bg-[#0A0E17] border-r border-gray-800"
+              className="w-72 bg-surface-1 border-r border-white/[0.06]"
             >
               <div className="flex flex-col h-full px-4 py-6">
-                <div className="flex items-center justify-start gap-3 mb-8">
+                <Link href="/" className="mb-8" aria-label="Jahpay home">
                   <Image
                     src="/images/logo_name.png"
-                    alt="jahpay logo"
-                    width={200}
-                    height={20}
-                    className="rounded-lg"
+                    alt="Jahpay"
+                    width={140}
+                    height={24}
                     style={{ height: "auto" }}
                     priority
                   />
-                </div>
-                <nav className="flex flex-col gap-4 mt-6 pt-6 border-t border-gray-800" />
-                <nav className="flex flex-col gap-3">
+                </Link>
+
+                <nav className="flex flex-col gap-2">
                   {!isAppPage && (
                     <Link
                       href="/app"
-                      className="inline-flex items-center justify-between rounded-xl border border-brand-blue/35 bg-brand-blue/10 px-4 py-3 text-sm font-semibold text-white hover:border-brand-blue/55 hover:bg-brand-blue/15 transition-colors"
+                      className="flex items-center justify-between rounded-xl border border-brand-blue/35 bg-brand-blue/10 px-4 py-3 text-sm font-semibold text-white hover:border-brand-blue/55 hover:bg-brand-blue/15 transition-colors"
                     >
                       Go to App
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
                   )}
+                  <Link
+                    href="/transactions"
+                    className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors"
+                  >
+                    Transactions
+                    <History className="h-4 w-4" />
+                  </Link>
+                  <a
+                    href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors"
+                  >
+                    ERC-8004 Docs
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
                 </nav>
-                <div className="mt-auto pt-6">
+
+                <div className="mt-auto pt-6 border-t border-white/[0.06]">
                   <WalletConnectButton />
                 </div>
               </div>
             </SheetContent>
           </Sheet>
-        </div>
-
-        {/* Desktop navigation */}
-        <div className="flex items-center gap-4">
-          {!isAppPage && (
-            <Button variant="outline" asChild className="hidden md:inline-flex">
-              <Link href="/app" className="gap-2">
-                Go to App
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
-          <WalletConnectButton />
         </div>
       </div>
     </header>

@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { cn } from "@/lib/utils";
+
+const pillBase =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-semibold h-10 px-4 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/70";
 
 export function WalletConnectButton() {
   const [mounted, setMounted] = useState(false);
@@ -13,11 +17,15 @@ export function WalletConnectButton() {
 
   if (!mounted) {
     return (
-      <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+      <button
+        className={cn(pillBase, "bg-white/[0.06] text-white/40")}
+        disabled
+      >
         Connect Wallet
       </button>
     );
   }
+
   return (
     <ConnectButton.Custom>
       {({
@@ -27,39 +35,24 @@ export function WalletConnectButton() {
         openChainModal,
         openConnectModal,
         authenticationStatus,
-        mounted,
+        mounted: rkMounted,
       }) => {
-        // Note: If your app doesn't use authentication, you
-        // can remove all 'authenticationStatus' checks
-        const ready = mounted && authenticationStatus !== "loading";
+        const ready = rkMounted && authenticationStatus !== "loading";
         const connected =
           ready &&
           account &&
           chain &&
           (!authenticationStatus || authenticationStatus === "authenticated");
 
-        const hiddenStyle = {
-          opacity: 0,
-          pointerEvents: "none" as const,
-          userSelect: "none" as const,
-        };
-
-        const iconStyle = {
-          background: chain?.iconBackground,
-          width: 12,
-          height: 12,
-          borderRadius: 999,
-          overflow: "hidden" as const,
-          marginRight: 4,
-        };
-
-        const imgStyle = { width: 12, height: 12 };
-
         return (
           <div
             {...(!ready && {
               "aria-hidden": true,
-              style: hiddenStyle,
+              style: {
+                opacity: 0,
+                pointerEvents: "none" as const,
+                userSelect: "none" as const,
+              },
             })}
           >
             {(() => {
@@ -68,7 +61,11 @@ export function WalletConnectButton() {
                   <button
                     onClick={openConnectModal}
                     type="button"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all px-6 py-3 text-white"
+                    className={cn(
+                      pillBase,
+                      "bg-gradient-to-r from-brand-blue to-brand-green text-white",
+                      "shadow-[0_0_20px_hsl(var(--brand-blue)/0.25)] hover:shadow-[0_0_30px_hsl(var(--brand-blue)/0.4)]",
+                    )}
                   >
                     Connect Wallet
                   </button>
@@ -80,9 +77,12 @@ export function WalletConnectButton() {
                   <button
                     onClick={openChainModal}
                     type="button"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-semibold bg-destructive text-white hover:bg-destructive/90 shadow-lg hover:shadow-xl hover:shadow-destructive/20 transition-all px-6 py-3"
+                    className={cn(
+                      pillBase,
+                      "bg-destructive text-white hover:bg-destructive/90",
+                    )}
                   >
-                    Wrong network
+                    Switch network
                   </button>
                 );
               }
@@ -91,21 +91,24 @@ export function WalletConnectButton() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={openChainModal}
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all px-6 py-3 text-white"
                     type="button"
+                    className={cn(
+                      pillBase,
+                      "hidden sm:inline-flex gap-1.5 border border-white/10 bg-white/[0.04] text-white/80 hover:bg-white/[0.08] hover:text-white",
+                    )}
                   >
-                    {chain.hasIcon && (
-                      <div style={iconStyle}>
-                        {chain.iconUrl && (
-                          <Image
-                            alt={chain.name ?? "Chain icon"}
-                            src={chain.iconUrl}
-                            width={12}
-                            height={12}
-                            style={imgStyle}
-                          />
-                        )}
-                      </div>
+                    {chain.hasIcon && chain.iconUrl && (
+                      <span
+                        className="h-4 w-4 overflow-hidden rounded-full shrink-0"
+                        style={{ background: chain.iconBackground }}
+                      >
+                        <Image
+                          alt={chain.name ?? "Chain icon"}
+                          src={chain.iconUrl}
+                          width={16}
+                          height={16}
+                        />
+                      </span>
                     )}
                     {chain.name}
                   </button>
@@ -113,12 +116,15 @@ export function WalletConnectButton() {
                   <button
                     onClick={openAccountModal}
                     type="button"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                    className={cn(
+                      pillBase,
+                      "border border-brand-blue/30 bg-brand-blue/10 text-white hover:bg-brand-blue/20 font-mono text-xs",
+                    )}
                   >
                     {account.displayName}
                     {account.displayBalance &&
                     !account.displayBalance.includes("NaN")
-                      ? ` (${account.displayBalance})`
+                      ? ` · ${account.displayBalance}`
                       : ""}
                   </button>
                 </div>

@@ -1,9 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     container: {
       center: true,
@@ -14,8 +12,18 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-space-grotesk)", "ui-sans-serif", "system-ui", "sans-serif"],
-        heading: ["var(--font-space-grotesk)", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: [
+          "var(--font-space-grotesk)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        heading: [
+          "var(--font-space-grotesk)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -51,10 +59,15 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        "brand-blue": "hsl(var(--brand-blue))",
-        "brand-green": "hsl(var(--brand-green))",
-        "celo-green": "#00d79b",
-        "celo-gold": "#ffc439",
+        "brand-blue": "hsl(var(--brand-blue) / <alpha-value>)",
+        "brand-green": "hsl(var(--brand-green) / <alpha-value>)",
+        "brand-purple": "hsl(var(--brand-purple) / <alpha-value>)",
+        surface: {
+          0: "hsl(var(--surface-0) / <alpha-value>)",
+          1: "hsl(var(--surface-1) / <alpha-value>)",
+          2: "hsl(var(--surface-2) / <alpha-value>)",
+          3: "hsl(var(--surface-3) / <alpha-value>)",
+        },
       },
       keyframes: {
         "accordion-down": {
@@ -65,14 +78,6 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: 0 },
         },
-        shimmer: {
-          "0%": { backgroundPosition: "-200% center" },
-          "100%": { backgroundPosition: "200% center" },
-        },
-        "glow-pulse": {
-          "0%, 100%": { opacity: "0.6", transform: "scale(1)" },
-          "50%": { opacity: "1", transform: "scale(1.05)" },
-        },
         float: {
           "0%, 100%": { transform: "translateY(0px) scale(1)" },
           "50%": { transform: "translateY(-20px) scale(1.03)" },
@@ -81,24 +86,12 @@ module.exports = {
           "0%, 100%": { transform: "translateY(0px) scale(1)" },
           "50%": { transform: "translateY(-15px) scale(1.02)" },
         },
-        "live-pulse": {
-          "0%, 100%": { opacity: "1", boxShadow: "0 0 0 0 rgba(0, 215, 155, 0.6)" },
-          "50%": { opacity: "0.8", boxShadow: "0 0 0 4px rgba(0, 215, 155, 0)" },
-        },
-        "gradient-shift": {
-          "0%, 100%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        shimmer: "shimmer 2.5s linear infinite",
-        "glow-pulse": "glow-pulse 3s ease-in-out infinite",
         float: "float 7s ease-in-out infinite",
         "float-delayed": "float-delayed 9s ease-in-out infinite",
-        "live-pulse": "live-pulse 2s ease-in-out infinite",
-        "gradient-shift": "gradient-shift 4s ease infinite",
       },
     },
   },

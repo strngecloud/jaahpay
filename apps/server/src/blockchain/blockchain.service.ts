@@ -34,16 +34,11 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   private unwatchCelo: WatchContractEventReturnType | null = null;
   private unwatchBase: WatchContractEventReturnType | null = null;
 
+  // Event definitions must match SpendRouter.sol exactly (including
+  // recipientHash) or the log topic hash will never match and the
+  // listener will silently receive nothing.
   private readonly SPEND_INITIATED_EVENT = parseAbiItem(
-    'event SpendInitiated(uint256 indexed spendId, address indexed user, uint256 usdcAmount, uint256 ngnAmount, uint256 timestamp)',
-  );
-
-  private readonly SPEND_COMPLETED_EVENT = parseAbiItem(
-    'event SpendCompleted(uint256 indexed spendId, string bankTransactionRef)',
-  );
-
-  private readonly SPEND_REFUNDED_EVENT = parseAbiItem(
-    'event SpendRefunded(uint256 indexed spendId, string reason)',
+    'event SpendInitiated(uint256 indexed spendId, address indexed user, uint256 usdcAmount, uint256 ngnAmount, uint256 timestamp, bytes32 recipientHash)',
   );
 
   constructor(
@@ -207,6 +202,54 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   async getTransaction(chain: Chain, hash: `0x${string}`) {
     const client = await this.getClient(chain);
     return await client.getTransaction({ hash });
+  }
+
+  /**
+   * Lock a spend on-chain before starting the bank transfer, so the user
+   * cannot cancel (and reclaim escrow) while NGN is in flight.
+   */
+  async markProcessing(spendId: string, chain: Chain): Promise<string> {
+    const walletClient =
+      chain === Chain.CELO ? this.celoWalletClient : this.baseWalletClient;
+    const contractAddress =
+      chain === Chain.CELO
+        ? this.configService.get<string>('SPEND_ROUTER_ADDRESS_CELO')
+        : this.configService.get<string>('SPEND_ROUTER_ADDRESS_BASE');
+
+    if (!walletClient) {
+      throw new Error(
+        'Wallet client not initialized - check PROCESSOR_WALLET_PRIVATE_KEY',
+      );
+    }
+
+    if (
+      !contractAddress ||
+      contractAddress === '0x0000000000000000000000000000000000000000'
+    ) {
+      throw new Error(`SpendRouter address not configured for ${chain}`);
+    }
+
+    this.logger.log(`Marking spend ${spendId} as processing on ${chain}`);
+
+    const hash = await walletClient.writeContract({
+      address: contractAddress as `0x${string}`,
+      abi: SPEND_ROUTER_ABI,
+      functionName: 'markProcessing',
+      args: [BigInt(spendId)],
+    });
+
+    const publicClient =
+      chain === Chain.CELO ? this.celoClient : this.baseClient;
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash,
+      confirmations: 2,
+    });
+
+    if (receipt.status !== 'success') {
+      throw new Error(`markProcessing reverted: ${hash}`);
+    }
+
+    return hash;
   }
 
   /**

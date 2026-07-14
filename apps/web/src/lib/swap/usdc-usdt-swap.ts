@@ -6,7 +6,8 @@
 import { Mento, ChainId, deadlineFromMinutes } from '@mento-protocol/mento-sdk';
 import { parseUnits, formatUnits, encodeFunctionData, createPublicClient, http, type Address } from 'viem';
 import { celo } from 'viem/chains';
-import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG, JAHPAY_ROUTER_ADDRESS } from '../minipay/constants';
+import { toDataSuffix } from '@celo/attribution-tags';
+import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG, JAHPAY_ROUTER_ADDRESS, CELO_BUILDERS_ATTRIBUTION_TAG } from '../minipay/constants';
 import { getUniswapQuote, buildUniswapSwapTransaction } from './uniswap-swap';
 
 const JAHPAY_ROUTER_ABI = [
@@ -67,6 +68,8 @@ export interface SwapQuote {
   rate: number;
   /** Is this a direct swap or routed via USDm? */
   route: 'direct' | 'via-usdm' | 'uniswap-v3';
+  /** Uniswap V3 pool fee tier used for this quote (uniswap-v3 route only) */
+  feeTier?: number;
   /** Slippage tolerance in BPS used for this quote */
   slippageBps: number;
   /** Is the pair currently tradable? */
@@ -267,6 +270,11 @@ export async function buildSwapTransaction(
     ],
   });
 
+  // Append the Celo Builders attribution tag (ERC-8021 data suffix) so this
+  // transaction is counted toward the hackathon leaderboard.
+  const taggedRouterData = (routerData +
+    toDataSuffix(CELO_BUILDERS_ATTRIBUTION_TAG).slice(2)) as `0x${string}`;
+
   // Build approval tx if swapping FROM an ERC-20
   let approval: {
     to: Address;
@@ -300,7 +308,7 @@ export async function buildSwapTransaction(
     swap: {
       params: {
         to: JAHPAY_ROUTER_ADDRESS as Address,
-        data: routerData,
+        data: taggedRouterData,
       },
     },
     quote,

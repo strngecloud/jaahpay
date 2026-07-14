@@ -63,9 +63,9 @@ export class ExchangeRateService {
     this.logger.log('Updating exchange rate...');
 
     const rates = await Promise.allSettled([
-      this.getBinanceRate(),
-      this.getCoingeckoRate(),
-      // Add more sources as needed
+      this.getCoingeckoRate('usd-coin', 'coingecko-usdc'),
+      this.getCoingeckoRate('tether', 'coingecko-usdt'),
+      // Add more sources as needed (Binance delisted NGN pairs in 2024)
     ]);
 
     const validRates = rates
@@ -110,58 +110,40 @@ export class ExchangeRateService {
   }
 
   /**
-   * Get rate from Binance
+   * Get an NGN rate for a stablecoin from CoinGecko.
+   * Valid coin ids: 'usd-coin' (USDC), 'tether' (USDT). Note there is no
+   * CoinGecko id 'usd' - the old query returned nothing.
    */
-  private async getBinanceRate(): Promise<ExchangeRate> {
+  private async getCoingeckoRate(
+    coinId: string,
+    sourceName: string,
+  ): Promise<ExchangeRate> {
     try {
-      const binanceUrl = this.configService.get<string>('BINANCE_API_URL');
+      const coingeckoUrl =
+        this.configService.get<string>('COINGECKO_API_URL') ||
+        'https://api.coingecko.com/api/v3';
 
-      // Get USDT/NGN if available, or use USDT/USDC * USDC/NGN
       const response = await firstValueFrom(
         this.httpService.get(
-          `${binanceUrl}/api/v3/ticker/price?symbol=USDTNGN`,
+          `${coingeckoUrl}/simple/price?ids=${coinId}&vs_currencies=ngn`,
           { timeout: 5000 },
         ),
       );
 
-      const rate = parseFloat(response.data.price);
+      const rate = response.data?.[coinId]?.ngn;
+
+      if (typeof rate !== 'number' || !(rate > 0)) {
+        throw new Error(`Invalid NGN rate for ${coinId}: ${rate}`);
+      }
 
       return {
         usdToNgn: rate,
-        source: 'binance',
-        timestamp: new Date(),
-        confidence: 0.9,
-      };
-    } catch (error) {
-      this.logger.warn('Failed to fetch rate from Binance:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get rate from CoinGecko
-   */
-  private async getCoingeckoRate(): Promise<ExchangeRate> {
-    try {
-      const coingeckoUrl = this.configService.get<string>('COINGECKO_API_URL');
-
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${coingeckoUrl}/simple/price?ids=usd&vs_currencies=ngn`,
-          { timeout: 5000 },
-        ),
-      );
-
-      const rate = response.data.usd.ngn;
-
-      return {
-        usdToNgn: rate,
-        source: 'coingecko',
+        source: sourceName,
         timestamp: new Date(),
         confidence: 0.85,
       };
     } catch (error) {
-      this.logger.warn('Failed to fetch rate from CoinGecko:', error);
+      this.logger.warn(`Failed to fetch ${coinId} rate from CoinGecko:`, error);
       throw error;
     }
   }

@@ -99,9 +99,15 @@ Thumbs.db
 # Turbo
 .turbo
 
+# Arb bot trade log
+.arb-bot/
+
 # Foundry/Forge
 apps/contracts/out/
 apps/contracts/cache/
 apps/contracts/broadcast/
 apps/contracts/lib/
 *.gas-snapshot
+
+# Sentry
+.env.sentry-build-plugin

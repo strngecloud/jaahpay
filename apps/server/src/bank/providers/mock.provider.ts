@@ -72,7 +72,9 @@ export class MockBankProvider implements IBankProvider {
     return Promise.resolve({
       success: true,
       reference: `MOCK-${request.reference}`,
-      status: 'pending',
+      // Settle immediately: there is no webhook in development to move a
+      // 'pending' transfer forward.
+      status: 'success',
       message: 'Mock transfer successful',
       data: {
         mockData: true,

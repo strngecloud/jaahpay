@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -12,6 +12,7 @@ import { FraudModule } from './fraud/fraud.module';
 import { RedisModule } from './redis/redis.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { RateLimitMiddleware } from './common/middleware/rate-limit.middleware';
 import { SpendEntity } from './database/entities/spend.entity';
 import { BankApiLogEntity } from './database/entities/bank-api-log.entity';
 import { UserSpendLimitEntity } from './database/entities/user-spend-limit.entity';
@@ -69,6 +70,13 @@ import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
+    RateLimitMiddleware,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Basic per-IP rate limiting on every route (webhooks included:
+    // providers stay well under 60 req/min per IP).
+    consumer.apply(RateLimitMiddleware).forRoutes('*');
+  }
+}

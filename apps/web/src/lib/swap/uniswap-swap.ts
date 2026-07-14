@@ -15,6 +15,7 @@ import {
   type Address,
 } from 'viem';
 import { celo } from 'viem/chains';
+import { toDataSuffix } from '@celo/attribution-tags';
 import {
   SWAP_TOKENS,
   SUPPORTED_TOKENS,
@@ -23,6 +24,7 @@ import {
   UNISWAP_POOL_FEE,
   SWAP_CONFIG,
   JAHPAY_ROUTER_ADDRESS,
+  CELO_BUILDERS_ATTRIBUTION_TAG,
 } from '../minipay/constants';
 import type { SwapQuote, SwapTransaction, SwapTokenSymbol } from './usdc-usdt-swap';
 
@@ -169,6 +171,7 @@ export async function getUniswapQuote(
   toToken: SwapTokenSymbol,
   amountIn: string,
   slippageBps: number = SWAP_CONFIG.DEFAULT_SLIPPAGE_BPS,
+  feeTier: number = UNISWAP_POOL_FEE,
 ): Promise<SwapQuote> {
   if (!amountIn || parseFloat(amountIn) <= 0) {
     throw new Error('Amount must be greater than 0');
@@ -191,7 +194,7 @@ export async function getUniswapQuote(
         tokenIn: fromAddr,
         tokenOut: toAddr,
         amountIn: amountInParsed,
-        fee: UNISWAP_POOL_FEE,
+        fee: feeTier,
         sqrtPriceLimitX96: BigInt(0),
       },
     ],
@@ -212,6 +215,7 @@ export async function getUniswapQuote(
     platformFeePercent: PLATFORM_FEE_BPS / 100,
     rate,
     route: 'uniswap-v3',
+    feeTier,
     slippageBps,
     isTradable: true,
     timestamp: Date.now(),
@@ -226,8 +230,9 @@ export async function buildUniswapSwapTransaction(
   amountIn: string,
   userAddress: string,
   slippageBps: number = SWAP_CONFIG.DEFAULT_SLIPPAGE_BPS,
+  feeTier: number = UNISWAP_POOL_FEE,
 ): Promise<SwapTransaction> {
-  const quote = await getUniswapQuote(fromToken, toToken, amountIn, slippageBps);
+  const quote = await getUniswapQuote(fromToken, toToken, amountIn, slippageBps, feeTier);
 
   const fromAddr = getTokenAddress(fromToken);
   const toAddr = getTokenAddress(toToken);
@@ -248,7 +253,7 @@ export async function buildUniswapSwapTransaction(
       {
         tokenIn: fromAddr,
         tokenOut: toAddr,
-        fee: UNISWAP_POOL_FEE,
+        fee: feeTier,
         recipient: JAHPAY_ROUTER_ADDRESS as Address,
         amountIn: amountInParsed,
         amountOutMinimum,
@@ -269,6 +274,11 @@ export async function buildUniswapSwapTransaction(
       swapData,
     ],
   });
+
+  // Append the Celo Builders attribution tag (ERC-8021 data suffix) so this
+  // transaction is counted toward the hackathon leaderboard.
+  const taggedRouterData = (routerData +
+    toDataSuffix(CELO_BUILDERS_ATTRIBUTION_TAG).slice(2)) as `0x${string}`;
 
   // Build approval tx if swapping FROM an ERC-20 (USDC/USDT → CELO)
   let approval: {
@@ -306,7 +316,7 @@ export async function buildUniswapSwapTransaction(
     swap: {
       params: {
         to: JAHPAY_ROUTER_ADDRESS as Address,
-        data: routerData,
+        data: taggedRouterData,
         ...(isFromCelo ? { value: amountInParsed } : {}),
       },
     },

@@ -81,9 +81,14 @@ export const SUPPORTED_TOKENS = [
 
 // ─── Platform Fee ────────────────────────────────────────────────────────────
 
-/** 0.3% platform fee (30 basis points) */
-export const PLATFORM_FEE_BPS = 30;
-export const PLATFORM_FEE_PERCENT = 0.3;
+/**
+ * 0.01% platform fee (1 basis point) — kept negligible so pricing never
+ * drives users or agents away. MUST match the router's on-chain
+ * platformFeeBps (owner-set via setPlatformFee); this constant is only
+ * used for client-side quoting.
+ */
+export const PLATFORM_FEE_BPS = 1;
+export const PLATFORM_FEE_PERCENT = 0.01;
 
 /** Address that collects platform fees — set in .env */
 export const FEE_COLLECTOR_ADDRESS =
@@ -94,6 +99,9 @@ export const FEE_COLLECTOR_ADDRESS =
 export const JAHPAY_ROUTER_ADDRESS =
   process.env.NEXT_PUBLIC_JAHPAY_ROUTER_ADDRESS ||
   '0x0000000000000000000000000000000000000000';
+
+/** Celo Builders (celobuilders.xyz) attribution tag — appended as an ERC-8021 data suffix to swap transactions so on-chain volume counts on the hackathon leaderboard */
+export const CELO_BUILDERS_ATTRIBUTION_TAG = 'celo_cc9e2c49ca49';
 
 
 // ─── ERC-8004 Agent ───────────────────────────────────────────────────────────
