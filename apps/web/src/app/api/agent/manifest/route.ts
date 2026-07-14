@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AGENT_CONFIG } from '@/lib/minipay/constants';
+import { getX402PayTo } from '@/lib/api/x402';
 
 export const runtime = 'edge';
 
@@ -29,7 +30,7 @@ export async function GET() {
       },
       {
         type: 'wallet',
-        address: process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS || '0x0000000000000000000000000000000000000000',
+        address: getX402PayTo() || '0x0000000000000000000000000000000000000000',
         chainId: AGENT_CONFIG.chainId,
       },
     ],

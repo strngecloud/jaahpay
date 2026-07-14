@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { X402_PRICES } from '@/lib/api/x402';
+import { getX402PayTo, X402_PRICES } from '@/lib/api/x402';
 
 export const runtime = 'edge';
 
@@ -15,7 +15,7 @@ export async function GET() {
     x402Version: 1,
     network: 'celo',
     facilitator: 'https://api.x402.celo.org',
-    payTo: process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS,
+    payTo: getX402PayTo(),
     asset: {
       address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
       symbol: 'USDC',

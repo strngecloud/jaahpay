@@ -14,17 +14,32 @@ import { NextRequest } from "next/server";
 const FACILITATOR_URL = "https://api.x402.celo.org";
 const CELO_USDC = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C";
 
-/** USD prices expressed in USDC atomic units (6 decimals) */
+/**
+ * USD prices expressed in USDC atomic units (6 decimals).
+ * Kept deliberately negligible so cost never deters an agent from paying —
+ * the point is settled on-chain usage, not per-call margin.
+ */
 export const X402_PRICES = {
-  /** $0.001 — raw data lookups (quotes, rates) */
-  MICRO: "1000",
-  /** $0.002 — computed recommendations */
-  SMALL: "2000",
-  /** $0.005 — conversational AI responses */
-  MEDIUM: "5000",
-  /** $0.05 — full premium market analysis */
-  PREMIUM: "50000",
+  /** $0.0001 — raw data lookups (quotes, rates) */
+  MICRO: "100",
+  /** $0.0002 — computed recommendations */
+  SMALL: "200",
+  /** $0.0005 — conversational AI responses */
+  MEDIUM: "500",
+  /** $0.001 — full premium market analysis */
+  PREMIUM: "1000",
 } as const;
+
+/**
+ * Wallet that receives x402 payments. X402_PAYTO_ADDRESS should be the wallet
+ * registered on the Celo Builders allowlist so settlements are attributed on
+ * the hackathon leaderboard (facilitator txs can't carry the ERC-8021 tag —
+ * they're counted by payer/payee wallet instead). Falls back to the fee
+ * collector for backwards compatibility.
+ */
+export function getX402PayTo(): string | undefined {
+  return process.env.X402_PAYTO_ADDRESS || process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS;
+}
 
 export interface X402Options {
   /** Price in USDC atomic units (6 decimals), e.g. "1000" = $0.001 */
@@ -99,10 +114,10 @@ export function withX402(
   options: X402Options
 ) {
   return async (req: NextRequest): Promise<Response> => {
-    const payTo = process.env.NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS;
+    const payTo = getX402PayTo();
     if (!payTo) {
       return Response.json(
-        { error: "Server configuration error: FEE_COLLECTOR_ADDRESS not set" },
+        { error: "Server configuration error: X402_PAYTO_ADDRESS not set" },
         { status: 500 }
       );
     }
