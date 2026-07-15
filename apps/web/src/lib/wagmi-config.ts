@@ -26,11 +26,20 @@ export function getConfig() {
         chains,
         connectors: [
             injected(),
-            walletConnect({
-                projectId:
-                    process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID ||
-                    "5e89c4eefe79b7c5cfd8c43f6826e9da",
-            }),
+            // WalletConnect's provider touches indexedDB when constructed, so
+            // it can only exist in the browser config. Connectors are only
+            // exercised client-side; the server just needs the chains,
+            // transports, and cookie storage for SSR hydration.
+            ...(typeof window === "undefined"
+                ? []
+                : [
+                      walletConnect({
+                          projectId:
+                              process.env
+                                  .NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID ||
+                              "5e89c4eefe79b7c5cfd8c43f6826e9da",
+                      }),
+                  ]),
         ],
         transports: {
             [celo.id]: http(),
