@@ -183,8 +183,40 @@ async function buy(label: string, url: string, init: RequestInit): Promise<void>
   );
 }
 
+/**
+ * X402_DEBUG_SETTLE=1: bypass the Jahpay server and talk to the facilitator
+ * directly with the same signed payload, printing full verify/settle
+ * responses. Use when the paywall reports "Payment settlement failed" —
+ * the middleware can only forward what the facilitator tells it.
+ */
+async function debugSettle(): Promise<void> {
+  const item = SHOPPING_LIST[0];
+  const first = await fetch(`${TARGET}${item.path}`, item.init);
+  if (first.status !== 402) throw new Error(`expected 402, got ${first.status}`);
+  const offer = (await first.json()) as { accepts?: PaymentRequirements[] };
+  const req = offer.accepts?.[0];
+  if (!req) throw new Error('402 without payment requirements');
+  console.log('offer:', JSON.stringify(req, null, 2));
+
+  const header = await buildPaymentHeader(req);
+  const paymentPayload = JSON.parse(Buffer.from(header, 'base64').toString());
+  // Reconstruct paymentRequirements exactly as the server middleware does
+  const paymentRequirements = { ...req, mimeType: 'application/json', maxTimeoutSeconds: 300 };
+  const body = JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements });
+
+  for (const step of ['verify', 'settle'] as const) {
+    const res = await fetch(`https://api.x402.celo.org/${step}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    console.log(`\n/${step} HTTP ${res.status}:`, await res.text());
+  }
+}
+
 let cycle = 0;
 async function run(): Promise<void> {
+  if (process.env.X402_DEBUG_SETTLE === '1') return debugSettle();
   console.log(`x402 consumer agent | payer ${account.address} | target ${TARGET}`);
   console.log(`price cap $${Number(MAX_PRICE) / 1e6}/call | interval ${POLL_MS}ms\n`);
 

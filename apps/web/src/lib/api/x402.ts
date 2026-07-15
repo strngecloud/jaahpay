@@ -198,15 +198,16 @@ export function withX402(
       headers: { "Content-Type": "application/json" },
       body: facilitatorBody,
     });
-    const settlement = await settleRes.json();
+    const settlement = await settleRes.json().catch(() => ({}));
     if (!settlement.success) {
-      return paymentRequired(
-        resourceUrl,
-        payTo,
-        options.price,
-        options.description,
-        settlement.errorReason || "Payment settlement failed"
-      );
+      // Facilitator error shape varies (errorReason / error / invalidReason);
+      // surface whatever it sent so clients can see the real failure.
+      const reason =
+        settlement.errorReason ||
+        settlement.error ||
+        settlement.invalidReason ||
+        `Payment settlement failed (facilitator ${settleRes.status}: ${JSON.stringify(settlement)})`;
+      return paymentRequired(resourceUrl, payTo, options.price, options.description, reason);
     }
 
     const headers = new Headers(response.headers);
