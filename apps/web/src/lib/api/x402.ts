@@ -15,6 +15,17 @@ const FACILITATOR_URL = "https://api.x402.celo.org";
 const CELO_USDC = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C";
 
 /**
+ * The facilitator's /settle endpoint requires an X-API-Key (self-serve at
+ * x402.celo.org — see scripts/x402-keygen.ts). /verify works without one.
+ */
+function facilitatorHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const apiKey = process.env.X402_FACILITATOR_API_KEY;
+  if (apiKey) headers["X-API-Key"] = apiKey;
+  return headers;
+}
+
+/**
  * USD prices expressed in USDC atomic units (6 decimals).
  * Kept deliberately negligible so cost never deters an agent from paying —
  * the point is settled on-chain usage, not per-call margin.
@@ -175,7 +186,7 @@ export function withX402(
 
     const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: facilitatorHeaders(),
       body: facilitatorBody,
     });
     const verification = await verifyRes.json();
@@ -195,7 +206,7 @@ export function withX402(
 
     const settleRes = await fetch(`${FACILITATOR_URL}/settle`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: facilitatorHeaders(),
       body: facilitatorBody,
     });
     const settlement = await settleRes.json().catch(() => ({}));
