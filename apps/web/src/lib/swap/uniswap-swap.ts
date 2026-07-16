@@ -4,6 +4,9 @@
  *
  * This module is ONLY used for swaps involving CELO.
  * Stablecoin-only swaps (USDC↔USDT) continue to use Mento via usdc-usdt-swap.ts.
+ *
+ * CELO-input swaps call SwapRouter02 directly (see buildUniswapSwapTransaction);
+ * ERC-20-input swaps are wrapped through JahpaySwapRouter for fee collection.
  */
 
 import {
@@ -245,7 +248,16 @@ export async function buildUniswapSwapTransaction(
   const amountOutMinimum =
     grossOut - (grossOut * BigInt(slippageBps)) / BigInt(10_000);
 
-  // Build exactInputSingle calldata for Uniswap, targeting JAHPAY_ROUTER_ADDRESS as recipient
+  // CELO-input swaps go DIRECTLY to Uniswap's SwapRouter02 instead of through
+  // JahpaySwapRouter. The router treats CELO input as native and forwards
+  // msg.value to the target without setting any allowance, but SwapRouter02
+  // pulls tokenIn (CELO is an ERC20 on Celo) via transferFrom — so the value
+  // is never used, the pull has no allowance, and the swap always reverts
+  // with SwapFailed(). Calling SwapRouter02 directly with a normal ERC-20
+  // approve avoids the broken path; the ERC-8021 data suffix below keeps the
+  // transaction attributed on the hackathon leaderboard either way.
+  const isFromCelo = fromToken === 'CELO';
+
   const swapData = encodeFunctionData({
     abi: SWAP_ROUTER_ABI,
     functionName: 'exactInputSingle',
@@ -254,7 +266,9 @@ export async function buildUniswapSwapTransaction(
         tokenIn: fromAddr,
         tokenOut: toAddr,
         fee: feeTier,
-        recipient: JAHPAY_ROUTER_ADDRESS as Address,
+        // Direct swaps pay out to the user; router swaps pay out to the
+        // router, which forwards net-of-fee to the user.
+        recipient: (isFromCelo ? userAddress : JAHPAY_ROUTER_ADDRESS) as Address,
         amountIn: amountInParsed,
         amountOutMinimum,
         sqrtPriceLimitX96: BigInt(0),
@@ -262,62 +276,67 @@ export async function buildUniswapSwapTransaction(
     ],
   });
 
-  // Wrap the call for JahpaySwapRouter
-  const routerData = encodeFunctionData({
-    abi: JAHPAY_ROUTER_ABI,
-    functionName: 'swap',
-    args: [
-      fromToken === 'CELO' ? '0x0000000000000000000000000000000000000000' : fromAddr,
-      amountInParsed,
-      toToken === 'CELO' ? '0x0000000000000000000000000000000000000000' : toAddr,
-      UNISWAP_V3_CONTRACTS.SWAP_ROUTER as Address,
-      swapData,
-    ],
-  });
+  // Wrap the call for JahpaySwapRouter (ERC-20 input only)
+  const outerData = isFromCelo
+    ? swapData
+    : encodeFunctionData({
+        abi: JAHPAY_ROUTER_ABI,
+        functionName: 'swap',
+        args: [
+          fromAddr,
+          amountInParsed,
+          toToken === 'CELO' ? '0x0000000000000000000000000000000000000000' : toAddr,
+          UNISWAP_V3_CONTRACTS.SWAP_ROUTER as Address,
+          swapData,
+        ],
+      });
 
   // Append the Celo Builders attribution tag (ERC-8021 data suffix) so this
   // transaction is counted toward the hackathon leaderboard.
-  const taggedRouterData = (routerData +
+  const taggedData = (outerData +
     toDataSuffix(CELO_BUILDERS_ATTRIBUTION_TAG).slice(2)) as `0x${string}`;
 
-  // Build approval tx if swapping FROM an ERC-20 (USDC/USDT → CELO)
+  // The input token is always pulled via transferFrom (CELO included — it is
+  // a regular ERC-20 at 0x471e… on Celo), so the user must approve whichever
+  // contract executes the pull: SwapRouter02 for direct CELO swaps, the
+  // Jahpay router otherwise.
+  const spender = (isFromCelo
+    ? UNISWAP_V3_CONTRACTS.SWAP_ROUTER
+    : JAHPAY_ROUTER_ADDRESS) as Address;
+
   let approval: {
     to: Address;
     data: `0x${string}`;
   } | null = null;
 
-  if (fromToken !== 'CELO') {
-    const client = getPublicClient();
-    const currentAllowance = await client.readContract({
-      address: fromAddr,
+  const client = getPublicClient();
+  const currentAllowance = await client.readContract({
+    address: fromAddr,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [userAddress as Address, spender],
+  });
+
+  if (BigInt(currentAllowance.toString()) < amountInParsed) {
+    const approveData = encodeFunctionData({
       abi: ERC20_ABI,
-      functionName: 'allowance',
-      args: [userAddress as Address, JAHPAY_ROUTER_ADDRESS as Address],
+      functionName: 'approve',
+      args: [spender, amountInParsed],
     });
-
-    if (BigInt(currentAllowance.toString()) < amountInParsed) {
-      const approveData = encodeFunctionData({
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [JAHPAY_ROUTER_ADDRESS as Address, amountInParsed],
-      });
-      approval = {
-        to: fromAddr,
-        data: approveData,
-      };
-    }
+    approval = {
+      to: fromAddr,
+      data: approveData,
+    };
   }
-
-  // For CELO → token swaps, we need to send native CELO value
-  const isFromCelo = fromToken === 'CELO';
 
   return {
     approval,
     swap: {
       params: {
-        to: JAHPAY_ROUTER_ADDRESS as Address,
-        data: taggedRouterData,
-        ...(isFromCelo ? { value: amountInParsed } : {}),
+        to: (isFromCelo
+          ? UNISWAP_V3_CONTRACTS.SWAP_ROUTER
+          : JAHPAY_ROUTER_ADDRESS) as Address,
+        data: taggedData,
       },
     },
     quote,

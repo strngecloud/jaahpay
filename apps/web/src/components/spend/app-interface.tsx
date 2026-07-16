@@ -53,7 +53,7 @@ export function AppInterface() {
   const handleSwapSuccess = useCallback(() => {
     setTxState({
       status: "success",
-      message: "Swap completed successfully!",
+      message: "Swap initiated successfully!",
     });
     setTimeout(() => setTxState({ status: "idle" }), 6000);
   }, []);
