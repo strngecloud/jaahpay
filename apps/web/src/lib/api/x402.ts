@@ -26,19 +26,32 @@ function facilitatorHeaders(): Record<string, string> {
 }
 
 /**
- * USD prices expressed in USDC atomic units (6 decimals).
- * Kept deliberately negligible so cost never deters an agent from paying —
- * the point is settled on-chain usage, not per-call margin.
+ * USD prices expressed in USDC atomic units (6 decimals): "1000000" = $1.00,
+ * "100" = $0.0001.
+ *
+ * Overridable from the environment so you can retune pricing WITHOUT a code
+ * change: set X402_PRICE_ATOMIC to price every tier the same, or override one
+ * tier with X402_PRICE_MICRO_ATOMIC / _SMALL_ / _MEDIUM_ / _PREMIUM_.
+ * A per-tier value wins over X402_PRICE_ATOMIC, which wins over the default.
+ *
+ * These are read SERVER-SIDE, so for production jahpay.xyz to charge the new
+ * price you must set the var in your Vercel project env (not just local .env)
+ * and redeploy — local .env only affects `pnpm dev`.
  */
+const priceAtomic = (tier: string, fallback: string): string => {
+  const value = process.env[`X402_PRICE_${tier}_ATOMIC`] || process.env.X402_PRICE_ATOMIC || fallback;
+  return /^\d+$/.test(value) ? value : fallback; // ignore malformed overrides
+};
+
 export const X402_PRICES = {
-  /** $0.0001 — raw data lookups (quotes, rates) */
-  MICRO: "100",
-  /** $0.0002 — computed recommendations */
-  SMALL: "200",
-  /** $0.0005 — conversational AI responses */
-  MEDIUM: "500",
-  /** $0.001 — full premium market analysis */
-  PREMIUM: "1000",
+  /** raw data lookups (quotes, rates) — default $1.00 */
+  MICRO: priceAtomic("MICRO", "1000000"),
+  /** computed recommendations — default $1.00 */
+  SMALL: priceAtomic("SMALL", "1000000"),
+  /** conversational AI responses — default $1.00 */
+  MEDIUM: priceAtomic("MEDIUM", "1000000"),
+  /** full premium market analysis — default $1.00 */
+  PREMIUM: priceAtomic("PREMIUM", "1000000"),
 } as const;
 
 /**
