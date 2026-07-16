@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Web3 providers — only loaded on the client (via dynamic ssr:false).
- * Keeps WalletConnect / indexedDB off the server.
+ * Web3 providers. Server-rendered: the wagmi config uses cookieStorage with
+ * ssr:true, so connection state hydrates from the cookie header without a
+ * client-only bailout.
  */
 
 import { type ReactNode, useState, useMemo } from "react";

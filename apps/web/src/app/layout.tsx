@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import {
+  Space_Grotesk,
+  Bricolage_Grotesque,
+  IBM_Plex_Mono,
+} from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { headers } from "next/headers";
@@ -7,6 +11,19 @@ import { headers } from "next/headers";
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-bricolage",
+  display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plex-mono",
   display: "swap",
 });
 
@@ -34,7 +51,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${spaceGrotesk.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${bricolage.variable} ${plexMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <AppProviders cookieHeader={cookieHeader}>{children}</AppProviders>

@@ -13,6 +13,7 @@
     "bot:arb": "tsx scripts/arb-bot.ts",
     "bot:x402": "tsx scripts/x402-agent.ts",
     "bot:sweep": "tsx scripts/sweep-fees.ts",
+    "bot:recycle": "tsx scripts/recycle-usdc.ts",
     "router:admin": "tsx scripts/router-admin.ts",
     "x402:keygen": "tsx scripts/x402-keygen.ts",
     "clean": "tsx scripts/clean.ts"

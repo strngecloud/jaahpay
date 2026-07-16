@@ -1,110 +1,102 @@
-"use client";
 import Link from "next/link";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
-import {
-  Zap,
-  Shield,
-  Bot,
-  ChevronDown,
-  ArrowRight,
-  RefreshCw,
-  TrendingUp,
-  Landmark,
-  Star,
-  ExternalLink,
-} from "lucide-react";
+import { Reveal } from "@/components/landing/reveal";
+import { LiveRate } from "@/components/landing/live-rate";
 
-// ─── Variants ─────────────────────────────────────────────────────────────────
+// ─── Content ──────────────────────────────────────────────────────────────────
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 200, damping: 28 },
-  },
-};
-
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } },
-};
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const STATS = [
-  { value: "< 5s", label: "Settlement time" },
-  { value: "Oracle", label: "Pricing source" },
-  { value: "ERC-8004", label: "AI standard" },
+const RECEIPT_ROWS: Array<{
+  label: string;
+  value: string;
+  strong?: boolean;
+  rule?: boolean;
+}> = [
+  { label: "YOU SEND", value: "100.00 USDC" },
+  { label: "ORACLE RATE", value: "₦1,648.52 / USDC" },
+  { label: "FEE — 0.30%", value: "0.30 USDC" },
+  { label: "RECIPIENT GETS", value: "₦164,357", strong: true, rule: true },
+  { label: "BANK", value: "GTBANK ····0231" },
+  { label: "TIME TO SETTLE", value: "4.2s" },
+  { label: "AGENT CHECK", value: "SLIPPAGE 0.1% · OK" },
 ];
 
-const FEATURES = [
+const RAILS = [
   {
-    icon: <RefreshCw className="w-5 h-5 text-brand-blue" />,
-    title: "Mento & Uniswap Pricing",
-    desc: "Swap USDC and USDT at oracle-sourced rates from Mento and Uniswap — no AMM slippage, no price manipulation.",
-    gradient: "from-brand-blue/20 to-blue-600/5",
-    border: "border-brand-blue/15",
+    code: "ORACLE-PX",
+    title: "Oracle pricing, not curve pricing",
+    desc: "Rates come from Mento and Uniswap oracles, so the number you're quoted is the number that settles. No AMM slippage, no sandwich risk.",
   },
   {
-    icon: <Bot className="w-5 h-5 text-brand-purple" />,
-    title: "ERC-8004 AI Agent",
-    desc: "An on-chain registered AI agent monitors conditions and recommends optimal slippage in real time.",
-    gradient: "from-brand-purple/20 to-violet-600/5",
-    border: "border-brand-purple/15",
+    code: "NGN-RAIL",
+    title: "Naira payouts to any bank",
+    desc: "Send USDC straight to a Nigerian bank account at the live rate. Flat 0.3% fee, delivered in minutes.",
   },
   {
-    icon: <Zap className="w-5 h-5 text-yellow-400" />,
-    title: "Fee Abstraction",
-    desc: "Pay gas in USDC or USDT. No CELO needed. Celo's native fee abstraction handles the rest.",
-    gradient: "from-yellow-500/20 to-amber-600/5",
-    border: "border-yellow-500/15",
+    code: "ERC-8004",
+    title: "An agent that signs its work",
+    desc: "A registered on-chain agent reads market conditions and recommends slippage before every swap — and records the outcome afterwards.",
   },
   {
-    icon: <Shield className="w-5 h-5 text-brand-green" />,
-    title: "Non-Custodial",
-    desc: "Your keys, your tokens. Swaps execute directly from your wallet — we never hold your funds.",
-    gradient: "from-brand-green/20 to-emerald-600/5",
-    border: "border-brand-green/15",
+    code: "GAS-ABS",
+    title: "Gas paid in stables",
+    desc: "Celo's fee abstraction lets you pay gas in USDC or USDT. You never need to hold CELO.",
   },
   {
-    icon: <TrendingUp className="w-5 h-5 text-cyan-400" />,
-    title: "Circuit Breaker Protection",
-    desc: "Mento's circuit breaker auto-pauses trading during extreme volatility — your swap is always safe.",
-    gradient: "from-cyan-500/20 to-blue-600/5",
-    border: "border-cyan-500/15",
+    code: "SELF-CUST",
+    title: "Your keys the whole way",
+    desc: "Swaps execute directly from your wallet. Jahpay never takes custody of your funds.",
   },
   {
-    icon: <Landmark className="w-5 h-5 text-rose-400" />,
-    title: "Bank Payouts in Naira",
-    desc: "Send USDC straight to any Nigerian bank account. Live NGN rates, a flat 0.3% fee, and delivery in minutes.",
-    gradient: "from-rose-500/20 to-pink-600/5",
-    border: "border-rose-500/15",
+    code: "CIRCUIT",
+    title: "Volatility-aware by default",
+    desc: "Mento's circuit breaker pauses trading during extreme moves — and the app tells you before you sign, not after.",
   },
 ];
 
 const STEPS = [
   {
     num: "01",
-    title: "Connect your wallet",
-    desc: "Link any Celo-compatible wallet — MetaMask, Valora, or any WalletConnect app.",
+    title: "Connect",
+    desc: "Link any Celo wallet — MetaMask, Valora, or anything on WalletConnect.",
   },
   {
     num: "02",
-    title: "Enter an amount",
-    desc: "Type how much USDC or USDT you want to swap. A live oracle quote appears instantly.",
+    title: "Quote",
+    desc: "Enter an amount. A live oracle quote appears with the full fee breakdown.",
   },
   {
     num: "03",
-    title: "AI reviews conditions",
-    desc: "The ERC-8004 agent assesses market conditions and recommends the safest slippage setting.",
+    title: "Agent check",
+    desc: "The ERC-8004 agent reads conditions and recommends the safest slippage.",
   },
   {
     num: "04",
-    title: "Confirm and swap",
-    desc: "Review the fee breakdown and confirm. Your swap settles on Celo in under 5 seconds.",
+    title: "Settle",
+    desc: "Confirm once. Settlement lands on Celo in under five seconds.",
+  },
+];
+
+const AUDIT_TRAIL = [
+  {
+    block: "BLK 28,441,203",
+    kind: "IDENTITY",
+    detail: "Registered as ERC-8004 agent (ERC-721)",
+  },
+  {
+    block: "BLK 29,102,377",
+    kind: "RECOMMEND",
+    detail: "Slippage 0.1% — oracle spread stable",
+  },
+  {
+    block: "BLK 29,102,391",
+    kind: "SETTLE",
+    detail: "100 USDC → 99.70 USDT via Mento v3",
+  },
+  {
+    block: "BLK 29,102,402",
+    kind: "FEEDBACK",
+    detail: "+1 reputation — recorded on-chain",
   },
 ];
 
@@ -115,11 +107,11 @@ const FAQS = [
   },
   {
     q: "How does the AI agent work?",
-    a: "The ERC-8004 agent is registered on-chain as an ERC-721 NFT on Celo. It monitors Mento oracle rates and recommends optimal slippage before each swap. After completion, it records feedback on-chain to build its reputation.",
+    a: "The ERC-8004 agent is registered on-chain as an ERC-721 on Celo. It monitors Mento oracle rates and recommends optimal slippage before each swap. After completion, it records feedback on-chain to build its reputation.",
   },
   {
     q: "What is the platform fee?",
-    a: "0.3% on every swap, deducted from the output amount. It is always shown transparently before you confirm.",
+    a: "0.3% on every swap, deducted from the output amount. It is always shown before you confirm.",
   },
   {
     q: "Can I send money to a bank account?",
@@ -135,39 +127,124 @@ const FAQS = [
   },
 ];
 
-// ─── FAQ Item ─────────────────────────────────────────────────────────────────
+const CELOSCAN_USDC =
+  "https://celoscan.io/token/0xcebA9300f2b948710d2653dD7B07f33A8B32118C";
+const ERC8004_DOCS = "https://docs.celo.org/build-on-celo/build-with-ai/8004";
 
-function FAQItem({ q, a, id }: { q: string; a: string; id: string }) {
-  const [open, setOpen] = useState(false);
+// ─── Pieces ───────────────────────────────────────────────────────────────────
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-controls={id}
-        className="w-full text-left p-5 flex items-center justify-between gap-4"
-      >
-        <span className="text-sm font-semibold text-white">{q}</span>
-        <ChevronDown
-          className={`w-4 h-4 text-white/40 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            id={id}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+    <p className="font-mono text-[11px] tracking-[0.22em] text-gold">
+      {children}
+    </p>
+  );
+}
+
+function SettlementReceipt() {
+  return (
+    <div className="relative mx-auto w-full max-w-sm">
+      {/* Printer slot */}
+      <div className="mx-6 h-2.5 rounded-full bg-black/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" />
+
+      <div className="mx-2 -mt-1 bg-paper text-ink-0 font-mono text-[13px] leading-relaxed shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)]">
+        <div className="px-6 pt-6 pb-4">
+          <div
+            className="print-line flex items-baseline justify-between"
+            style={{ animationDelay: "0.2s" }}
           >
-            <p className="text-sm text-white/50 leading-relaxed px-5 pb-5">
-              {a}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <span className="font-semibold tracking-widest">JAHPAY</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(147_60%_30%)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-mint" />
+              SETTLED
+            </span>
+          </div>
+          <p
+            className="print-line mt-1 text-[11px] text-ink-0/55"
+            style={{ animationDelay: "0.35s" }}
+          >
+            SETTLEMENT RECEIPT · CELO MAINNET · MENTO V3
+          </p>
+
+          <div
+            className="print-line my-4 border-t border-dashed border-ink-0/25"
+            style={{ animationDelay: "0.5s" }}
+          />
+
+          {RECEIPT_ROWS.map(({ label, value, strong, rule }, i) => (
+            <div key={label}>
+              {rule && (
+                <div
+                  className="print-line my-3 border-t border-dashed border-ink-0/25"
+                  style={{ animationDelay: `${0.6 + i * 0.14}s` }}
+                />
+              )}
+              <div
+                className={`print-line flex items-baseline justify-between gap-4 py-0.5 ${
+                  strong ? "text-[15px] font-semibold" : ""
+                }`}
+                style={{ animationDelay: `${0.65 + i * 0.14}s` }}
+              >
+                <span className={strong ? "" : "text-ink-0/55"}>{label}</span>
+                <span className="text-right tabular-nums">{value}</span>
+              </div>
+            </div>
+          ))}
+
+          <div
+            className="print-line my-4 border-t border-dashed border-ink-0/25"
+            style={{ animationDelay: "1.75s" }}
+          />
+
+          <div
+            className="print-line barcode text-ink-0/85"
+            style={{ animationDelay: "1.85s" }}
+          />
+          <a
+            href={CELOSCAN_USDC}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="print-line mt-3 flex items-center justify-between text-[11px] text-ink-0/55 hover:text-ink-0 transition-colors"
+            style={{ animationDelay: "1.95s" }}
+          >
+            <span>TX 0x7f3a····c9e2</span>
+            <span className="inline-flex items-center gap-1">
+              CELOSCAN <ArrowUpRight className="h-3 w-3" />
+            </span>
+          </a>
+        </div>
+      </div>
+      <div className="tear-bottom mx-2" />
+    </div>
+  );
+}
+
+function TapeItems() {
+  return (
+    <div className="flex shrink-0 items-center font-mono text-xs tracking-wider text-white/60">
+      <span className="mx-7 inline-flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-mint animate-pulse" />
+        USDC/NGN <LiveRate base={1648.52} prefix="₦" />
+      </span>
+      <span className="text-gold/70">◆</span>
+      <span className="mx-7">
+        USDT/USDC <span className="text-white/80 tabular-nums">0.9997</span>
+      </span>
+      <span className="text-gold/70">◆</span>
+      <span className="mx-7">PLATFORM FEE 0.30% FLAT</span>
+      <span className="text-gold/70">◆</span>
+      <span className="mx-7">SETTLEMENT &lt; 5 SEC</span>
+      <span className="text-gold/70">◆</span>
+      <span className="mx-7">GAS PAYABLE IN USDC · USDT</span>
+      <span className="text-gold/70">◆</span>
+      <span className="mx-7">
+        MENTO CIRCUIT <span className="text-mint">NORMAL</span>
+      </span>
+      <span className="text-gold/70">◆</span>
+      <span className="mx-7">
+        ERC-8004 AGENT <span className="text-mint">ACTIVE</span>
+      </span>
+      <span className="text-gold/70">◆</span>
     </div>
   );
 }
@@ -176,488 +253,261 @@ function FAQItem({ q, a, id }: { q: string; a: string; id: string }) {
 
 export default function Home() {
   return (
-    <main className="flex-1 overflow-x-hidden jahpay-bg jahpay-grid relative">
-      {/* ── Ambient overlay gradients ────────────────────────────── */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <motion.div
-          animate={{ opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,hsl(var(--brand-blue)/0.12),transparent_70%)]"
-        />
-        <motion.div
-          animate={{ opacity: [0.1, 0.25, 0.1] }}
-          transition={{
-            duration: 16,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 4,
-          }}
-          className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,hsl(var(--brand-purple)/0.1),transparent_70%)]"
-        />
-      </div>
+    <div className="flex-1 overflow-x-hidden bg-ink-0">
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section className="relative pt-36 pb-20 lg:pt-44 lg:pb-24">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid items-center gap-16 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-8">
+              <Eyebrow>CELO MAINNET · ORACLE-PRICED · NON-CUSTODIAL</Eyebrow>
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center pt-24 pb-20">
-        <div className="container px-4 mx-auto max-w-7xl">
-          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              animate="show"
-              className="space-y-8"
-            >
-              <motion.div variants={fadeUp}>
-                <h1 className="text-5xl md:text-6xl xl:text-7xl font-bold leading-[1.05] tracking-tight">
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
-                    Smart swaps for
-                  </span>
-                  <br />
-                  <span className="relative inline-block">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-brand-blue via-cyan-400 to-brand-green">
-                      USDC, USDT & CELO
-                    </span>
-                    <motion.span
-                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-blue to-brand-green"
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ delay: 0.7, duration: 0.6 }}
-                    />
-                  </span>
-                  <br />
-                  <span className="text-white/80 text-4xl md:text-5xl xl:text-6xl font-semibold">
-                    built for Celo.
-                  </span>
-                </h1>
-              </motion.div>
+              <h1 className="font-display text-6xl font-bold leading-[0.95] tracking-tight text-paper sm:text-7xl xl:text-8xl">
+                Stables in.
+                <br />
+                <span className="text-mint">Naira out.</span>
+              </h1>
 
-              <motion.p
-                variants={fadeUp}
-                className="text-lg text-slate-400 leading-relaxed max-w-xl"
-              >
-                Oracle-aware routing, transparent pricing, bank payouts in
-                Naira, and an on-chain AI agent that recommends safer execution
-                settings before every swap.
-              </motion.p>
+              <p className="max-w-xl text-lg leading-relaxed text-white/55">
+                Jahpay swaps USDC and USDT at the Mento oracle price and pays
+                out to any Nigerian bank account in minutes. A flat 0.3% fee,
+                gas paid in stables, and an on-chain agent checking conditions
+                before you sign.
+              </p>
 
-              <motion.div
-                variants={fadeUp}
-                className="flex flex-col sm:flex-row gap-4"
-              >
-                <Link
-                  href="/app"
-                  className="btn-cta px-8 py-4 text-base hover:-translate-y-1"
-                >
-                  Go to App <ArrowRight className="w-4 h-4" />
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Link href="/app" className="btn-mint px-8 py-4 text-base">
+                  Open the app <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a
-                  href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
+                  href={CELOSCAN_USDC}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-quiet px-8 py-4 text-base"
                 >
-                  ERC-8004 Docs <ExternalLink className="w-4 h-4" />
+                  View the contract <ArrowUpRight className="h-4 w-4" />
                 </a>
-              </motion.div>
+              </div>
 
-              <motion.div
-                variants={fadeUp}
-                className="grid grid-cols-3 gap-4 pt-4 border-t border-white/[0.05]"
-              >
-                {STATS.map(({ value, label }) => (
-                  <div key={label} className="text-center">
-                    <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-green to-cyan-400">
-                      {value}
+              <p className="font-mono text-[11px] tracking-[0.18em] text-white/30">
+                NO CELO NEEDED FOR GAS — FEE ABSTRACTION IS NATIVE
+              </p>
+            </div>
+
+            <div className="relative">
+              <SettlementReceipt />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Market tape ──────────────────────────────────────────── */}
+      <div
+        className="overflow-hidden border-y border-white/[0.07] bg-ink-1/70 py-3"
+        aria-label="Indicative market rates"
+      >
+        <div className="tape-track flex">
+          <TapeItems />
+          <TapeItems />
+        </div>
+      </div>
+
+      {/* ── Rails ────────────────────────────────────────────────── */}
+      <section id="features" className="py-24 lg:py-32">
+        <div className="container mx-auto max-w-6xl px-4">
+          <Reveal className="max-w-2xl space-y-4">
+            <Eyebrow>THE RAILS</Eyebrow>
+            <h2 className="font-display text-4xl font-bold tracking-tight text-paper md:text-5xl">
+              Built like a payment rail.
+            </h2>
+            <p className="text-lg leading-relaxed text-white/50">
+              Every piece of Jahpay exists to move value predictably — priced
+              by oracles, guarded by circuit breakers, settled from your own
+              wallet.
+            </p>
+          </Reveal>
+
+          <div className="mt-14 border-t border-white/[0.08]">
+            {RAILS.map(({ code, title, desc }, i) => (
+              <Reveal key={code} delay={Math.min(i * 60, 240)}>
+                <div className="group grid gap-2 border-b border-white/[0.08] py-6 transition-colors hover:bg-white/[0.02] md:grid-cols-[170px_260px_1fr] md:items-baseline md:gap-8 md:px-4">
+                  <span className="font-mono text-xs tracking-[0.18em] text-mint/80 transition-colors group-hover:text-mint">
+                    {code}
+                  </span>
+                  <h3 className="text-base font-bold text-white">{title}</h3>
+                  <p className="text-sm leading-relaxed text-white/50">
+                    {desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How a swap settles ───────────────────────────────────── */}
+      <section id="how-it-works" className="py-24 lg:py-32">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <Reveal className="space-y-4">
+              <Eyebrow>EXECUTION</Eyebrow>
+              <h2 className="font-display text-4xl font-bold tracking-tight text-paper md:text-5xl">
+                Quote to settlement in four moves.
+              </h2>
+              <p className="text-lg leading-relaxed text-white/50">
+                The whole flow happens in one screen, with the fee breakdown
+                and the agent's read on conditions shown before you commit to
+                anything.
+              </p>
+            </Reveal>
+
+            <Reveal delay={120}>
+              <div className="rounded-xl border border-white/[0.09] bg-ink-1 p-2 font-mono">
+                <p className="px-5 pt-4 pb-2 text-[11px] tracking-[0.2em] text-white/35">
+                  EXECUTION LOG — TYPICAL SWAP
+                </p>
+                {STEPS.map(({ num, title, desc }) => (
+                  <div
+                    key={num}
+                    className="flex items-baseline gap-5 border-t border-white/[0.06] px-5 py-4"
+                  >
+                    <span className="text-sm text-mint">{num}</span>
+                    <div>
+                      <p className="text-sm font-semibold tracking-wide text-white">
+                        {title.toUpperCase()}
+                      </p>
+                      <p className="mt-1 font-sans text-sm leading-relaxed text-white/50">
+                        {desc}
+                      </p>
                     </div>
-                    <div className="text-xs text-white/35 mt-0.5">{label}</div>
                   </div>
                 ))}
-              </motion.div>
-            </motion.div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
 
-            <motion.div
-              initial={{ opacity: 0, x: 36 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.25, type: "spring", stiffness: 150 }}
-              className="relative"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/15 to-brand-purple/15 rounded-3xl blur-3xl -z-10" />
-              <div className="rounded-3xl border border-white/[0.12] bg-surface-1/85 backdrop-blur-xl p-6 sm:p-7">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-white/40">
-                      Jahpay App
-                    </p>
-                    <h2 className="text-xl font-bold text-white mt-1">
-                      Dedicated swap experience
-                    </h2>
-                  </div>
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/15 border border-brand-green/30 text-xs font-semibold text-brand-green">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" />
-                    Live
+      {/* ── Agent ────────────────────────────────────────────────── */}
+      <section className="py-24 lg:py-32">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid gap-14 lg:grid-cols-2 lg:items-center">
+            <Reveal className="space-y-6">
+              <Eyebrow>ON-CHAIN AGENT</Eyebrow>
+              <h2 className="font-display text-4xl font-bold tracking-tight text-paper md:text-5xl">
+                Advice with a paper trail.
+              </h2>
+              <p className="leading-relaxed text-white/50">
+                The Jahpay swap agent is a registered ERC-8004 identity on
+                Celo — an ERC-721 with a public record. Every recommendation
+                and every assisted swap is written to chain, building a
+                reputation you can audit instead of a promise you have to
+                trust.
+              </p>
+              <a
+                href={ERC8004_DOCS}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.18em] text-mint hover:text-paper transition-colors"
+              >
+                READ THE ERC-8004 SPEC <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+            </Reveal>
+
+            <Reveal delay={120}>
+              <div className="rounded-xl border border-white/[0.09] bg-ink-1 p-2 font-mono">
+                <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                  <p className="text-[11px] tracking-[0.2em] text-white/35">
+                    AUDIT TRAIL — JAHPAY SWAP AGENT
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-mint">
+                    <span className="h-1.5 w-1.5 rounded-full bg-mint animate-pulse" />
+                    LIVE
                   </span>
                 </div>
-
-                <div className="grid sm:grid-cols-2 gap-3 mt-6">
-                  {[
-                    {
-                      title: "Execution guidance",
-                      value: "ERC-8004 AI Agent",
-                    },
-                    {
-                      title: "Settlement",
-                      value: "Celo Mainnet",
-                    },
-                  ].map(({ title, value }) => (
-                    <div
-                      key={title}
-                      className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
-                    >
-                      <p className="text-[11px] uppercase tracking-wide text-white/35">
-                        {title}
-                      </p>
-                      <p className="text-sm font-semibold text-white mt-1">
-                        {value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-5 rounded-2xl border border-brand-blue/20 bg-brand-blue/[0.08] p-4">
-                  <p className="text-xs uppercase tracking-wider text-brand-blue/80">
-                    Sample quote preview
-                  </p>
-                  <div className="flex items-end justify-between mt-2">
-                    <div>
-                      <p className="text-white text-lg font-bold">100 USDC</p>
-                      <p className="text-white/45 text-xs">You send</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-white/35 mb-1" />
-                    <div className="text-right">
-                      <p className="text-brand-green text-lg font-bold">
-                        ~99.70 USDT
-                      </p>
-                      <p className="text-white/45 text-xs">You receive</p>
-                    </div>
+                {AUDIT_TRAIL.map(({ block, kind, detail }) => (
+                  <div
+                    key={block + kind}
+                    className="grid gap-1 border-t border-white/[0.06] px-5 py-4 text-xs sm:grid-cols-[130px_100px_1fr] sm:gap-4"
+                  >
+                    <span className="tabular-nums text-white/35">{block}</span>
+                    <span className="tracking-wider text-gold">{kind}</span>
+                    <span className="text-white/70">{detail}</span>
                   </div>
-                </div>
-
-                <Link
-                  href="/app"
-                  className="btn-cta mt-6 w-full px-5 py-3.5 text-sm"
-                >
-                  Go to App
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+                ))}
               </div>
-            </motion.div>
+            </Reveal>
           </div>
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────────────── */}
-      <section id="features" className="relative py-24 lg:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,hsl(var(--brand-green)/0.05),transparent_70%)]" />
-        <div className="container px-4 mx-auto max-w-7xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-blue/25 bg-brand-blue/10 text-xs font-semibold text-brand-blue uppercase tracking-wider mb-4">
-              Why Jahpay
-            </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-white">
-              Built different.
+      {/* ── FAQ ──────────────────────────────────────────────────── */}
+      <section id="faq" className="py-24 lg:py-32">
+        <div className="container mx-auto max-w-3xl px-4">
+          <Reveal className="mb-12 space-y-4">
+            <Eyebrow>QUESTIONS</Eyebrow>
+            <h2 className="font-display text-4xl font-bold tracking-tight text-paper">
+              Asked and answered.
             </h2>
-            <p className="text-lg text-slate-400 mt-4 max-w-xl mx-auto">
-              Every design decision prioritises security, transparency, and
-              intelligence.
-            </p>
-          </motion.div>
+          </Reveal>
 
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-80px" }}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
-          >
-            {FEATURES.map(({ icon, title, desc, gradient, border }) => (
-              <motion.div
-                key={title}
-                variants={fadeUp}
-                whileHover={{ y: -4 }}
-                className={`group relative rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-6 transition-all duration-300 hover:shadow-xl hover:shadow-black/30`}
-              >
-                <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center mb-4">
-                  {icon}
-                </div>
-                <h3 className="text-base font-bold text-white mb-2">{title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">{desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── How It Works ─────────────────────────────────────────────── */}
-      <section id="how-it-works" className="relative py-24 lg:py-32">
-        <div className="container px-4 mx-auto max-w-5xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <span className="inline-block px-4 py-1.5 rounded-full border border-brand-green/25 bg-brand-green/10 text-xs font-semibold text-brand-green uppercase tracking-wider mb-4">
-              Process
-            </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-white">
-              Swap in 4 steps.
-            </h2>
-          </motion.div>
-
-          <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-[22px] md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-brand-blue/40 via-brand-green/30 to-transparent -translate-x-px hidden md:block" />
-
-            <div className="space-y-10">
-              {STEPS.map(({ num, title, desc }, idx) => (
-                <motion.div
-                  key={num}
-                  initial={{ opacity: 0, x: idx % 2 === 0 ? -24 : 24 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1 }}
-                  className={`flex items-start gap-6 md:gap-10 ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
-                >
-                  <div className="flex-1 md:text-right">
-                    {idx % 2 !== 0 && (
-                      <div className="hidden md:block">
-                        <div className="text-sm font-bold text-white mb-1">
-                          {title}
-                        </div>
-                        <p className="text-sm text-white/45 leading-relaxed">
-                          {desc}
-                        </p>
-                      </div>
-                    )}
-                    {idx % 2 === 0 && <div />}
-                  </div>
-
-                  {/* Step badge */}
-                  <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-brand-blue to-brand-green flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-brand-blue/25 z-10">
-                    {num}
-                  </div>
-
-                  <div className="flex-1">
-                    {idx % 2 === 0 && (
-                      <div>
-                        <div className="text-sm font-bold text-white mb-1">
-                          {title}
-                        </div>
-                        <p className="text-sm text-white/45 leading-relaxed">
-                          {desc}
-                        </p>
-                      </div>
-                    )}
-                    {idx % 2 !== 0 && (
-                      <div className="md:hidden">
-                        <div className="text-sm font-bold text-white mb-1">
-                          {title}
-                        </div>
-                        <p className="text-sm text-white/45 leading-relaxed">
-                          {desc}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
+          <Reveal>
+            <div className="border-t border-white/[0.08]">
+              {FAQS.map(({ q, a }) => (
+                <details key={q} className="group border-b border-white/[0.08]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
+                    {q}
+                    <span
+                      aria-hidden="true"
+                      className="font-mono text-lg font-normal text-mint transition-transform duration-200 group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="pb-5 pr-8 text-sm leading-relaxed text-white/50">
+                    {a}
+                  </p>
+                </details>
               ))}
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ── AI Agent Spotlight ────────────────────────────────────────── */}
-      <section className="relative py-24 lg:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,hsl(var(--brand-purple)/0.08),transparent_70%)]" />
-        <div className="container px-4 mx-auto max-w-5xl relative z-10">
-          <div className="grid md:grid-cols-2 gap-14 items-center">
-            {/* Agent card mockup */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-brand-purple/20 to-brand-blue/10 rounded-3xl blur-2xl -z-10" />
-              <div className="rounded-3xl border border-brand-purple/20 bg-surface-1/90 backdrop-blur-md p-6 space-y-5">
-                {/* Header */}
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-purple/40 to-brand-blue/40 border border-brand-purple/30 flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-purple-300" />
-                    </div>
-                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-green border-2 border-surface-1" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white">
-                      Jahpay Swap Agent
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-white/40">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
-                      Optimal conditions · ERC-8004
-                    </div>
-                  </div>
-                  <div className="ml-auto flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`w-3 h-3 ${s <= 4 ? "fill-yellow-400 text-yellow-400" : "text-white/20"}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="text-sm text-white/55 leading-relaxed p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                  &quot;Oracle rates are stable. Ultra-low slippage (0.1%) is
-                  safe for this amount.&quot;
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Slippage", value: "0.1%" },
-                    { label: "Confidence", value: "97%" },
-                    { label: "Protocol", value: "Mento v3" },
-                  ].map(({ label, value }) => (
-                    <div
-                      key={label}
-                      className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]"
-                    >
-                      <div className="text-xs text-white/35 mb-1">{label}</div>
-                      <div className="text-sm font-bold text-white">
-                        {value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-white/25">
-                  <span>On-chain identity · Celo Mainnet</span>
-                  <span>ERC-721 · Registered</span>
-                </div>
+      {/* ── Paper CTA band ───────────────────────────────────────── */}
+      <section className="relative mt-8">
+        <div className="tear-top absolute inset-x-0 -top-[10px]" />
+        <div className="bg-paper text-ink-0">
+          <div className="container mx-auto max-w-6xl px-4 py-20">
+            <div className="flex flex-col items-start justify-between gap-10 md:flex-row md:items-end">
+              <div className="space-y-4">
+                <p className="font-mono text-[11px] tracking-[0.22em] text-ink-0/50">
+                  NEXT RECEIPT: YOURS
+                </p>
+                <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
+                  Ready when your wallet is.
+                </h2>
+                <p className="max-w-md leading-relaxed text-ink-0/60">
+                  Connect, get an oracle quote, and settle your first swap in
+                  under five seconds.
+                </p>
               </div>
-            </motion.div>
-
-            {/* Copy */}
-            <motion.div
-              initial={{ opacity: 0, x: 24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="space-y-6"
-            >
-              <span className="inline-block px-3 py-1.5 rounded-full border border-brand-purple/25 bg-brand-purple/10 text-xs font-semibold text-brand-purple uppercase tracking-wider">
-                AI Agent
-              </span>
-              <h2 className="text-4xl font-bold text-white leading-tight">
-                An AI that earns trust{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple to-brand-blue">
-                  on-chain.
-                </span>
-              </h2>
-              <p className="text-white/50 leading-relaxed">
-                The Jahpay Swap Agent is registered on Celo Mainnet as an
-                ERC-8004 identity — an ERC-721 NFT with a public reputation.
-                Every swap it assists with is recorded on-chain, building a
-                verifiable track record that anyone can audit.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  "Recommends slippage based on live oracle conditions",
-                  "Detects Mento circuit breaker status before you swap",
-                  "Builds on-chain reputation with every transaction",
-                  "Discoverable by other agents via ERC-8004 Identity Registry",
-                ].map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-start gap-3 text-sm text-white/60"
-                  >
-                    <span className="w-5 h-5 rounded-full bg-brand-green/15 border border-brand-green/25 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="https://docs.celo.org/build-on-celo/build-with-ai/8004"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-medium text-brand-purple hover:text-purple-300 transition-colors"
-              >
-                Learn about ERC-8004 <ExternalLink className="w-4 h-4" />
-              </a>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ──────────────────────────────────────────────────────── */}
-      <section id="faq" className="relative py-24 lg:py-32">
-        <div className="container px-4 mx-auto max-w-3xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-14"
-          >
-            <h2 className="text-4xl font-bold text-white">Frequently asked.</h2>
-          </motion.div>
-          <div className="space-y-3">
-            {FAQS.map((faq, i) => (
-              <FAQItem key={faq.q} {...faq} id={`faq-answer-${i}`} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <section className="relative py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,hsl(var(--brand-blue)/0.1),transparent_70%)]" />
-        <div className="container px-4 mx-auto max-w-3xl text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-6"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-white">
-              Ready to swap?
-            </h2>
-            <p className="text-lg text-slate-400">
-              Connect your wallet and let the AI agent guide your first swap.
-            </p>
-            <div className="flex justify-center gap-4 flex-wrap">
-              <Link
-                href="/app"
-                className="btn-cta px-8 py-4 hover:-translate-y-1"
-              >
-                Go to App <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a
-                href="https://celoscan.io/token/0xcebA9300f2b948710d2653dD7B07f33A8B32118C"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-quiet px-8 py-4"
-              >
-                View on CeloScan <ExternalLink className="w-4 h-4" />
-              </a>
+              <div className="flex flex-col gap-4 sm:flex-row md:shrink-0">
+                <Link href="/app" className="btn-ink px-8 py-4">
+                  Open the app <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a
+                  href={ERC8004_DOCS}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-ink-0/20 px-8 py-4 font-medium text-ink-0/75 transition-colors hover:border-ink-0/45 hover:text-ink-0"
+                >
+                  ERC-8004 docs <ArrowUpRight className="h-4 w-4" />
+                </a>
+              </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

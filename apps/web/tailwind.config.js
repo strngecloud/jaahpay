@@ -24,6 +24,18 @@ module.exports = {
           "system-ui",
           "sans-serif",
         ],
+        display: [
+          "var(--font-bricolage)",
+          "var(--font-space-grotesk)",
+          "ui-sans-serif",
+          "sans-serif",
+        ],
+        mono: [
+          "var(--font-plex-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "monospace",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -59,6 +71,16 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        ink: {
+          0: "hsl(var(--ink-0) / <alpha-value>)",
+          1: "hsl(var(--ink-1) / <alpha-value>)",
+        },
+        paper: {
+          DEFAULT: "hsl(var(--paper) / <alpha-value>)",
+          dim: "hsl(var(--paper-dim) / <alpha-value>)",
+        },
+        mint: "hsl(var(--mint) / <alpha-value>)",
+        gold: "hsl(var(--gold) / <alpha-value>)",
         "brand-blue": "hsl(var(--brand-blue) / <alpha-value>)",
         "brand-green": "hsl(var(--brand-green) / <alpha-value>)",
         "brand-purple": "hsl(var(--brand-purple) / <alpha-value>)",
