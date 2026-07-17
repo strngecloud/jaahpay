@@ -18,6 +18,7 @@ import { BankApiLogEntity } from './database/entities/bank-api-log.entity';
 import { UserSpendLimitEntity } from './database/entities/user-spend-limit.entity';
 import { WebhookLogEntity } from './database/entities/webhook-log.entity';
 import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
+import { SnakeNamingStrategy } from './database/snake-naming.strategy';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
           WebhookLogEntity,
           LedgerEntryEntity,
         ],
+        namingStrategy: new SnakeNamingStrategy(),
         synchronize: configService.get('DATABASE_SYNCHRONIZE') === 'true',
         logging: configService.get('DATABASE_LOGGING') === 'true',
       }),
