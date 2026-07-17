@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { IBankProvider } from './interfaces/bank-provider.interface';
 import { PaystackProvider } from './providers/paystack.provider';
@@ -25,10 +27,13 @@ export class BankService implements OnModuleInit {
     BankProvider.FLUTTERWAVE,
   ];
 
+  private bankLogoCache: Map<string, string> | null = null;
+
   constructor(
     @InjectRepository(BankApiLogEntity)
     private readonly bankApiLogRepo: Repository<BankApiLogEntity>,
     private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
     private readonly paystackProvider: PaystackProvider,
     private readonly flutterwaveProvider: FlutterwaveProvider,
     private readonly mockProvider: MockBankProvider,
@@ -44,6 +49,18 @@ export class BankService implements OnModuleInit {
     }
 
     this.providers.set(BankProvider.FLUTTERWAVE, flutterwaveProvider);
+
+    if (
+      this.configService.get<string>('BANK_PRIMARY_PROVIDER') === 'flutterwave'
+    ) {
+      this.logger.log(
+        'BANK_PRIMARY_PROVIDER=flutterwave: trying Flutterwave before other providers',
+      );
+      this.providerPriority = [
+        BankProvider.FLUTTERWAVE,
+        BankProvider.PAYSTACK,
+      ];
+    }
   }
 
   async onModuleInit() {
@@ -248,7 +265,7 @@ export class BankService implements OnModuleInit {
         if (!isAvailable) continue;
 
         this.logger.log(`Listing banks via ${providerName}`);
-        return await provider.listBanks();
+        return await this.attachLogos(await provider.listBanks());
       } catch (error) {
         this.logger.warn(`List banks failed with ${providerName}:`, error);
       }
@@ -258,6 +275,47 @@ export class BankService implements OnModuleInit {
       'All providers',
       'Failed to list banks from any provider',
     );
+  }
+
+  /**
+   * Bank logos come from the open nigerianbanks.xyz dataset, keyed by CBN
+   * bank code and normalized name. The dataset is fetched once and cached;
+   * enrichment is best-effort and never fails the /banks request.
+   */
+  private async getBankLogos(): Promise<Map<string, string>> {
+    if (this.bankLogoCache) return this.bankLogoCache;
+
+    const response = await firstValueFrom(
+      this.httpService.get('https://nigerianbanks.xyz/', { timeout: 10000 }),
+    );
+
+    const logos = new Map<string, string>();
+    for (const bank of response.data ?? []) {
+      if (!bank?.logo) continue;
+      if (bank.code) logos.set(String(bank.code), bank.logo);
+      if (bank.name) logos.set(this.normalizeBankName(bank.name), bank.logo);
+    }
+
+    this.bankLogoCache = logos;
+    return logos;
+  }
+
+  private normalizeBankName(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  private async attachLogos(banks: BankInfo[]): Promise<BankInfo[]> {
+    try {
+      const logos = await this.getBankLogos();
+      return banks.map((bank) => ({
+        ...bank,
+        logo:
+          logos.get(bank.code) ?? logos.get(this.normalizeBankName(bank.name)),
+      }));
+    } catch (error) {
+      this.logger.warn('Bank logo enrichment failed:', error);
+      return banks;
+    }
   }
 
   /**

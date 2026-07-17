@@ -78,6 +78,7 @@ export interface BankInfo {
   code: string;
   name: string;
   slug?: string;
+  logo?: string;
 }
 
 export interface ExchangeRate {

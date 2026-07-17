@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useReadContract } from "wagmi";
 import { useBanks } from "@/lib/hooks/use-banks";
+import { ACCOUNT_NUMBER_LENGTH } from "@/lib/spend/constants";
 import { useSpendRecipient } from "@/lib/hooks/use-spend-recipient";
 import { useSpendRecipients } from "@/lib/hooks/use-spend-recipients";
 import { useSpendFlow } from "@/lib/hooks/use-spend-flow";
@@ -26,27 +27,57 @@ const ERC20_BALANCE_ABI = [
 
 export function SpendPanel() {
   const [mounted, setMounted] = useState(false);
-  const { banks, isLoading: banksLoading } = useBanks();
+  // Banks are fetched lazily: the first complete account number enables the
+  // query; later edits retry it if the previous attempt failed.
+  const [banksEnabled, setBanksEnabled] = useState(false);
+  const {
+    banks,
+    isLoading: banksLoading,
+    error: banksError,
+    refetch: refetchBanks,
+  } = useBanks({ enabled: banksEnabled });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const handleAccountNumberComplete = useCallback(() => {
+    if (!banksEnabled) {
+      setBanksEnabled(true);
+    } else if ((banksError || banks.length === 0) && !banksLoading) {
+      void refetchBanks();
+    }
+  }, [banksEnabled, banksError, banks.length, banksLoading, refetchBanks]);
+
   if (!mounted) {
     return <div className="h-64" />;
   }
 
-  return <SpendPanelContent banks={banks} banksLoading={banksLoading} />;
+  return (
+    <SpendPanelContent
+      banks={banks}
+      banksLoading={banksLoading}
+      onAccountNumberComplete={handleAccountNumberComplete}
+    />
+  );
 }
 
 function SpendPanelContent({
   banks,
   banksLoading,
+  onAccountNumberComplete,
 }: {
   banks: ReturnType<typeof useBanks>["banks"];
   banksLoading: boolean;
+  onAccountNumberComplete: () => void;
 }) {
   const recipient = useSpendRecipient({ banks });
+
+  useEffect(() => {
+    if (recipient.accountNumber.length === ACCOUNT_NUMBER_LENGTH) {
+      onAccountNumberComplete();
+    }
+  }, [recipient.accountNumber, onAccountNumberComplete]);
   const recipients = useSpendRecipients(banks);
   const flow = useSpendFlow();
 

@@ -2,6 +2,7 @@ export interface Bank {
   code: string;
   name: string;
   slug?: string;
+  logo?: string;
 }
 
 export interface AccountValidation {

@@ -14,7 +14,7 @@ import {
   parseAbiItem,
   WatchContractEventReturnType,
   celo,
-  celoAlfajores,
+  celoSepolia,
   base,
   baseSepolia,
   privateKeyToAccount,
@@ -68,14 +68,23 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Processor wallet: ${this.processorAccount.address}`);
     }
 
-    const celoChain = nodeEnv === 'production' ? celo : celoAlfajores;
+    const celoChain = nodeEnv === 'production' ? celo : celoSepolia;
     const baseChain = nodeEnv === 'production' ? base : baseSepolia;
+
+    // Public RPCs (forno, sepolia.base.org) are load-balanced and lose
+    // eth_newFilter state between requests, so eth_getFilterChanges fails
+    // with "filter not found". Throwing here makes viem's watchers fall
+    // back to plain getLogs polling instead of installed filters.
+    const disableEventFilters = () => ({
+      createContractEventFilter: () =>
+        Promise.reject(new Error('Event filters disabled: RPC is load-balanced')),
+    });
 
     // Setup Celo clients
     this.celoClient = createPublicClient({
       chain: celoChain,
       transport: http(celoRpcUrl),
-    });
+    }).extend(disableEventFilters);
 
     if (this.processorAccount) {
       this.celoWalletClient = createWalletClient({
@@ -89,7 +98,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     this.baseClient = createPublicClient({
       chain: baseChain,
       transport: http(baseRpcUrl),
-    });
+    }).extend(disableEventFilters);
 
     if (this.processorAccount) {
       this.baseWalletClient = createWalletClient({

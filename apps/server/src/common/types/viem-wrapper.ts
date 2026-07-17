@@ -26,6 +26,6 @@ export const privateKeyToAccount: (privateKey: `0x${string}`) => any =
   viemAccounts.privateKeyToAccount;
 
 export const celo: any = viemChains.celo;
-export const celoAlfajores: any = viemChains.celoAlfajores;
+export const celoSepolia: any = viemChains.celoSepolia;
 export const base: any = viemChains.base;
 export const baseSepolia: any = viemChains.baseSepolia;

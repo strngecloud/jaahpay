@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { getBankInitials } from "@/lib/spend/constants";
 
@@ -21,21 +22,41 @@ function hashColor(name: string): string {
 
 export function BankAvatar({
   name,
+  logo,
   size = "md",
   className,
 }: {
   name: string;
+  logo?: string;
   size?: "sm" | "md";
   className?: string;
 }) {
-  const sz = size === "sm" ? "w-8 h-8 text-[10px]" : "w-10 h-10 text-xs";
+  const [logoFailed, setLogoFailed] = useState(false);
+  const dims = size === "sm" ? "w-8 h-8" : "w-10 h-10";
+
+  if (logo && !logoFailed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logo}
+        alt={name}
+        onError={() => setLogoFailed(true)}
+        className={cn(
+          "rounded-full object-cover shrink-0 bg-white/[0.06]",
+          dims,
+          className,
+        )}
+      />
+    );
+  }
 
   return (
     <div
       className={cn(
         "rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-gradient-to-br",
         hashColor(name),
-        sz,
+        dims,
+        size === "sm" ? "text-[10px]" : "text-xs",
         className,
       )}
     >

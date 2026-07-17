@@ -104,12 +104,11 @@ export function BankSelectorSheet({
                         : "hover:bg-white/[0.04]",
                     )}
                   >
-                    <BankAvatar name={bank.name} size="sm" />
+                    <BankAvatar name={bank.name} logo={bank.logo} size="sm" />
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-sm font-medium text-white truncate">
                         {bank.name}
                       </p>
-                      <p className="text-xs text-white/40">{bank.code}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />
                   </button>
