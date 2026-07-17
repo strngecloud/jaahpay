@@ -17,15 +17,16 @@ export class MockBankProvider implements IBankProvider {
 
   constructor() {
     // Initialize with default test account from environment
-    const accountNumber = process.env.PROVIDUS_ACCOUNT_NUMBER;
-    const accountName = process.env.PROVIDUS_ACCOUNT_NAME;
+    const accountNumber = process.env.MOCK_BANK_ACCOUNT_NUMBER;
+    const accountName = process.env.MOCK_BANK_ACCOUNT_NAME;
     if (accountNumber && accountName) {
       this.mockAccounts.set(accountNumber, accountName);
     }
   }
 
   getProviderName(): string {
-    return BankProvider.WEMA;
+    // The mock stands in for the primary provider slot in development
+    return BankProvider.PAYSTACK;
   }
 
   initialize(): Promise<void> {

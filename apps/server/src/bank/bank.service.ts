@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { IBankProvider } from './interfaces/bank-provider.interface';
-import { WemaProvider } from './providers/wema.provider';
 import { PaystackProvider } from './providers/paystack.provider';
+import { FlutterwaveProvider } from './providers/flutterwave.provider';
 import { MockBankProvider } from './providers/mock.provider';
 import {
   BankTransferRequest,
@@ -21,16 +21,16 @@ export class BankService implements OnModuleInit {
   private readonly logger = new Logger(BankService.name);
   private providers: Map<BankProvider, IBankProvider> = new Map();
   private providerPriority: BankProvider[] = [
-    BankProvider.WEMA,
     BankProvider.PAYSTACK,
+    BankProvider.FLUTTERWAVE,
   ];
 
   constructor(
     @InjectRepository(BankApiLogEntity)
     private readonly bankApiLogRepo: Repository<BankApiLogEntity>,
     private readonly configService: ConfigService,
-    private readonly wemaProvider: WemaProvider,
     private readonly paystackProvider: PaystackProvider,
+    private readonly flutterwaveProvider: FlutterwaveProvider,
     private readonly mockProvider: MockBankProvider,
   ) {
     const isDevelopment =
@@ -38,13 +38,12 @@ export class BankService implements OnModuleInit {
 
     if (isDevelopment) {
       this.logger.log('Development mode: Using mock bank provider as priority');
-      this.providerPriority = [BankProvider.WEMA, BankProvider.PAYSTACK];
-      this.providers.set(BankProvider.WEMA, mockProvider);
+      this.providers.set(BankProvider.PAYSTACK, mockProvider);
     } else {
-      this.providers.set(BankProvider.WEMA, wemaProvider);
+      this.providers.set(BankProvider.PAYSTACK, paystackProvider);
     }
 
-    this.providers.set(BankProvider.PAYSTACK, paystackProvider);
+    this.providers.set(BankProvider.FLUTTERWAVE, flutterwaveProvider);
   }
 
   async onModuleInit() {

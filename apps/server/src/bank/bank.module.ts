@@ -3,8 +3,8 @@ import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BankService } from './bank.service';
 import { BankController } from './bank.controller';
-import { WemaProvider } from './providers/wema.provider';
 import { PaystackProvider } from './providers/paystack.provider';
+import { FlutterwaveProvider } from './providers/flutterwave.provider';
 import { MockBankProvider } from './providers/mock.provider';
 import { BankApiLogEntity } from '../database/entities/bank-api-log.entity';
 
@@ -17,7 +17,12 @@ import { BankApiLogEntity } from '../database/entities/bank-api-log.entity';
     TypeOrmModule.forFeature([BankApiLogEntity]),
   ],
   controllers: [BankController],
-  providers: [BankService, WemaProvider, PaystackProvider, MockBankProvider],
+  providers: [
+    BankService,
+    PaystackProvider,
+    FlutterwaveProvider,
+    MockBankProvider,
+  ],
   exports: [BankService],
 })
 export class BankModule {}
