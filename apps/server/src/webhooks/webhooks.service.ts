@@ -63,18 +63,33 @@ export class WebhooksService {
   }
 
   /**
-   * Verify Wema webhook signature using HMAC SHA512
+   * Verify Flutterwave webhook signature. Flutterwave sends the secret hash
+   * configured in the dashboard verbatim in the `verif-hash` header, so this
+   * is a constant-time equality check rather than an HMAC of the body.
    */
-  verifyWemaSignature(
-    rawBody: Buffer | undefined,
-    signature: string,
-  ): boolean {
-    return this.verifyHmacSignature(
-      rawBody,
-      signature,
-      this.configService.get<string>('WEMA_SALT_KEY'),
-      'Wema',
+  verifyFlutterwaveSignature(signature: string): boolean {
+    if (!signature) return false;
+
+    const secretHash = this.configService.get<string>(
+      'FLUTTERWAVE_SECRET_HASH',
     );
+    if (!secretHash) {
+      this.logger.error('Flutterwave webhook secret hash not configured');
+      return false;
+    }
+
+    try {
+      const signatureBuf = Buffer.from(signature, 'utf8');
+      const secretBuf = Buffer.from(secretHash, 'utf8');
+
+      return (
+        signatureBuf.length === secretBuf.length &&
+        timingSafeEqual(signatureBuf, secretBuf)
+      );
+    } catch (error) {
+      this.logger.error('Error verifying Flutterwave signature:', error);
+      return false;
+    }
   }
 
   /**
@@ -93,26 +108,32 @@ export class WebhooksService {
   }
 
   /**
-   * Process Wema webhook for bank transfer status
+   * Process Flutterwave webhook for transfer status
    */
-  async processWemaWebhook(payload: any): Promise<void> {
-    const { transactionReference, platformTransactionReference, status } =
-      payload;
+  async processFlutterwaveWebhook(payload: any): Promise<void> {
+    const { event, data } = payload;
+
+    if (event !== 'transfer.completed') {
+      this.logger.log(`Ignoring Flutterwave event: ${event}`);
+      return;
+    }
+
+    const { reference, status } = data;
 
     // Check idempotency - prevent duplicate processing
-    const idempotencyKey = `webhook:wema:${transactionReference}`;
+    const idempotencyKey = `webhook:flutterwave:${reference}`;
     const alreadyProcessed = await this.redisService.exists(idempotencyKey);
 
     if (alreadyProcessed) {
-      this.logger.warn(`Webhook already processed: ${transactionReference}`);
+      this.logger.warn(`Webhook already processed: ${reference}`);
       return;
     }
 
     // Log webhook
     await this.webhookLogRepo.upsert(
       {
-        provider: BankProvider.WEMA,
-        webhookId: transactionReference,
+        provider: BankProvider.FLUTTERWAVE,
+        webhookId: reference,
         payload,
         processedAt: new Date(),
         status: 'received',
@@ -122,23 +143,21 @@ export class WebhooksService {
 
     // Find spend by bank reference
     const spend = await this.spendRepo.findOne({
-      where: { bankReference: transactionReference },
+      where: { bankReference: reference },
     });
 
     if (!spend) {
-      this.logger.error(
-        `Spend not found for webhook reference: ${transactionReference}`,
-      );
+      this.logger.error(`Spend not found for webhook reference: ${reference}`);
       return;
     }
 
-    // Update spend based on bank status
-    if (status === 'Successful' || status === 'Success') {
-      await this.handleSuccessfulTransfer(spend, platformTransactionReference);
-    } else if (status === 'Failed' || status === 'Declined') {
+    // Update spend based on transfer status
+    if (status === 'SUCCESSFUL') {
+      await this.handleSuccessfulTransfer(spend, reference);
+    } else if (status === 'FAILED') {
       await this.handleFailedTransfer(
         spend,
-        payload.message || 'Transfer failed',
+        data.complete_message || 'Transfer failed',
       );
     }
 

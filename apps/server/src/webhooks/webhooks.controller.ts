@@ -20,33 +20,28 @@ export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   /**
-   * Wema Bank webhook endpoint
-   * POST /api/v1/webhooks/wema
+   * Flutterwave webhook endpoint
+   * POST /api/v1/webhooks/flutterwave
    */
-  @Post('wema')
+  @Post('flutterwave')
   @HttpCode(HttpStatus.OK)
-  async handleWemaWebhook(
-    @Req() req: RawBodyRequest<Request>,
+  async handleFlutterwaveWebhook(
     @Body() payload: any,
-    @Headers('x-wema-signature') signature: string,
-    @Headers('x-webhook-id') webhookId: string,
+    @Headers('verif-hash') signature: string,
   ) {
-    this.logger.log(`Received Wema webhook: ${webhookId || 'no-id'}`);
+    this.logger.log(`Received Flutterwave webhook: ${payload.event}`);
 
-    const isValid = this.webhooksService.verifyWemaSignature(
-      req.rawBody,
-      signature,
-    );
+    const isValid = this.webhooksService.verifyFlutterwaveSignature(signature);
 
     if (!isValid) {
-      this.logger.error('Invalid Wema webhook signature');
+      this.logger.error('Invalid Flutterwave webhook signature');
       throw new UnauthorizedException('Invalid signature');
     }
 
-    // Let processing errors surface as 5xx so the bank retries the webhook.
-    await this.webhooksService.processWemaWebhook(payload);
+    // Let processing errors surface as 5xx so Flutterwave retries the webhook.
+    await this.webhooksService.processFlutterwaveWebhook(payload);
 
-    return { status: 'received', webhookId };
+    return { status: 'received' };
   }
 
   /**

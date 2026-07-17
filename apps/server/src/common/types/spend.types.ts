@@ -13,9 +13,8 @@ export enum Chain {
 }
 
 export enum BankProvider {
-  WEMA = 'wema',
-  PROVIDUS = 'providus',
   PAYSTACK = 'paystack',
+  FLUTTERWAVE = 'flutterwave',
 }
 
 export enum KYCLevel {
