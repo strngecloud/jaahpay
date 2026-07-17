@@ -68,13 +68,12 @@ SPEND_ROUTER_ADDRESS_CELO=0x0000000000000000000000000000000000000000
 SPEND_ROUTER_ADDRESS_BASE=0x0000000000000000000000000000000000000000
 
 # Bank APIs (optional for initial setup - see below)
-WEMA_API_URL=https://wema-alatdev-apimgt.developer.azure-api.net/apis
-WEMA_CLIENT_ID=your_client_id
-WEMA_CLIENT_SECRET=your_client_secret
-WEMA_API_KEY=your_api_key
-
 PAYSTACK_API_URL=https://api.paystack.co
 PAYSTACK_SECRET_KEY=sk_test_...  # Get from paystack.com
+
+FLUTTERWAVE_API_URL=https://api.flutterwave.com/v3
+FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-...  # Get from flutterwave.com
+FLUTTERWAVE_SECRET_HASH=your_webhook_secret_hash
 
 # Exchange rates
 BINANCE_API_URL=https://api.binance.com
@@ -129,20 +128,13 @@ To enable actual bank transfers, you need to register for bank API access:
    PAYSTACK_SECRET_KEY=sk_test_your_key_here
    ```
 
-### Wema Bank Alat
+### Flutterwave
 
-1. Visit [Wema Alat Developer Portal](https://wema-alatdev-apimgt.developer.azure-api.net/)
+1. Visit [Flutterwave Dashboard](https://dashboard.flutterwave.com/)
 2. Register for an account
-3. Subscribe to the API products
-4. Get your credentials (Client ID, Secret, API Key)
+3. Get your secret key from Settings → API Keys
+4. Set a webhook secret hash under Settings → Webhooks
 5. Add to `.env`
-
-### Providus Bank
-
-1. Contact Providus Bank for API access
-2. Fill out their API request form
-3. Receive credentials
-4. Add to `.env`
 
 ## Testing the API
 
@@ -191,7 +183,7 @@ apps/server/
 ├── src/
 │   ├── bank/                 # Bank API integrations
 │   │   ├── interfaces/       # IBankProvider interface
-│   │   ├── providers/        # Wema, Paystack implementations
+│   │   ├── providers/        # Paystack, Flutterwave implementations
 │   │   └── bank.service.ts   # Coordinator with fallback
 │   ├── blockchain/           # Event listeners
 │   │   └── blockchain.service.ts
@@ -339,9 +331,9 @@ SELECT * FROM bank_api_logs ORDER BY created_at DESC LIMIT 10;
 | `BASE_RPC_URL`              | Yes      | -               | Base RPC endpoint                   |
 | `SPEND_ROUTER_ADDRESS_CELO` | Yes      | -               | SpendRouter contract on Celo        |
 | `SPEND_ROUTER_ADDRESS_BASE` | Yes      | -               | SpendRouter contract on Base        |
-| `WEMA_API_URL`              | No       | -               | Wema Alat API URL                   |
-| `WEMA_CLIENT_ID`            | No       | -               | Wema client ID                      |
 | `PAYSTACK_SECRET_KEY`       | No       | -               | Paystack secret key                 |
+| `FLUTTERWAVE_SECRET_KEY`    | No       | -               | Flutterwave secret key              |
+| `FLUTTERWAVE_SECRET_HASH`   | No       | -               | Flutterwave webhook secret hash     |
 
 ## Next Steps
 

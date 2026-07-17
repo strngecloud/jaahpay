@@ -63,8 +63,8 @@ Professional NestJS backend service for the Jahpay spending feature, enabling us
 **Components**:
 
 - `BankService`: Coordinator with provider fallback
-- `WemaProvider`: Wema Alat API integration
 - `PaystackProvider`: Paystack API integration
+- `FlutterwaveProvider`: Flutterwave API integration
 - `IBankProvider`: Interface all providers implement
 
 **Features**:
@@ -136,7 +136,7 @@ SpendController
     ↓ DTO validation
 SpendService
     ↓ validateAccount()
-BankService → BankProvider (Wema/Paystack)
+BankService → BankProvider (Paystack/Flutterwave)
     ↓
 SpendService
     ↓ getCurrentRate()
@@ -173,10 +173,10 @@ Blockchain (mark complete on-chain)
 ```
 BankService.transfer()
     ↓
-Try Provider 1 (Wema)
+Try Provider 1 (Paystack)
     ├─ Success? → Return result
     └─ Failed → Log error
-Try Provider 2 (Paystack)
+Try Provider 2 (Flutterwave)
     ├─ Success? → Return result
     └─ Failed → Log error
 All failed → Throw BankApiException

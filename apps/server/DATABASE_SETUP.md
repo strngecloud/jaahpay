@@ -64,7 +64,7 @@ Audit trail for all bank API calls (debugging and compliance).
 | ------------------ | ------------ | --------------------------------- |
 | `id`               | BIGINT (PK)  | Auto-incrementing primary key     |
 | `spend_id`         | VARCHAR(66)  | Reference to spend transaction    |
-| `api_provider`     | VARCHAR(50)  | 'wema', 'providus', or 'paystack' |
+| `api_provider`     | VARCHAR(50)  | 'paystack' or 'flutterwave'       |
 | `endpoint`         | VARCHAR(255) | API endpoint called               |
 | `request_payload`  | JSONB        | Request body (sanitized)          |
 | `response_payload` | JSONB        | Response body                     |

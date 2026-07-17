@@ -4,7 +4,7 @@ Backend service for Jahpay's crypto-to-naira spending feature. Handles bank API 
 
 ## Features
 
-- ✅ Bank API Integration (Wema Alat, Providus, Paystack)
+- ✅ Bank API Integration (Paystack, Flutterwave)
 - ✅ Real-time blockchain event listening (Celo, Base)
 - ✅ Multi-source exchange rate aggregation
 - ✅ Spending limits and KYC management

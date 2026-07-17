@@ -12,8 +12,8 @@
 
 ### 2. **Webhook Security**
 
-- ✅ HMAC SHA512 signature verification (Wema)
 - ✅ HMAC SHA512 signature verification (Paystack)
+- ✅ Secret-hash verification (Flutterwave `verif-hash`)
 - ✅ Idempotency checks (prevent duplicate processing)
 - ✅ Redis-based deduplication (24-hour window)
 - ✅ <5 second response time requirement
@@ -60,8 +60,8 @@
    - [ ] Transfer CELO/ETH to processor wallet for gas
 
 3. **Banking APIs**
-   - [ ] Wema Alat production API credentials
    - [ ] Paystack production API credentials
+   - [ ] Flutterwave production API credentials
    - [ ] Virtual bank account setup
    - [ ] Webhook URLs registered with banks
 
@@ -96,16 +96,14 @@ SPEND_ROUTER_ADDRESS_BASE=0x... # From deployment
 # CRITICAL: Processor Wallet (Store in AWS Secrets Manager!)
 PROCESSOR_WALLET_PRIVATE_KEY=0x...  # DO NOT COMMIT
 
-# Wema Bank
-WEMA_API_URL=https://wema-alatprod-apimgt.azure-api.net/apis
-WEMA_API_KEY=<PROD_KEY>
-WEMA_SALT_KEY=<PROD_SALT>
-WEMA_SOURCE_ACCOUNT=<YOUR_ACCOUNT>
-WEMA_CALLBACK_URL=https://api.jahpay.com/webhooks/wema
-
 # Paystack
 PAYSTACK_SECRET_KEY=sk_live_...
 PAYSTACK_CALLBACK_URL=https://api.jahpay.com/webhooks/paystack
+
+# Flutterwave
+FLUTTERWAVE_API_URL=https://api.flutterwave.com/v3
+FLUTTERWAVE_SECRET_KEY=<PROD_KEY>
+FLUTTERWAVE_SECRET_HASH=<WEBHOOK_SECRET_HASH>
 ```
 
 ### Step 2: Database Migration
@@ -393,8 +391,8 @@ curl -X POST https://api.jahpay.com/api/v1/spend/initiate \
 # (Should be blocked after 2 requests in 1 minute)
 
 # 3. Test webhook endpoint
-curl -X POST https://api.jahpay.com/webhooks/wema \
-  -H "x-wema-signature: test" \
+curl -X POST https://api.jahpay.com/webhooks/paystack \
+  -H "x-paystack-signature: test" \
   -H "Content-Type: application/json" \
   -d '{}'
 

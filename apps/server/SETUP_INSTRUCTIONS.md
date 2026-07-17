@@ -61,10 +61,12 @@ DATABASE_NAME=jahpay_dev
 DATABASE_SYNCHRONIZE=true  # Auto-create tables
 REDIS_URL=redis://localhost:6379
 
-# Get from Wema Bank developer portal:
-WEMA_API_URL=https://wema-alatdev-apimgt.developer.azure-api.net/apis
-WEMA_API_KEY=your_key
-WEMA_SALT_KEY=your_salt
+# Get from the Paystack and Flutterwave dashboards:
+PAYSTACK_API_URL=https://api.paystack.co
+PAYSTACK_SECRET_KEY=sk_test_...
+FLUTTERWAVE_API_URL=https://api.flutterwave.com/v3
+FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-...
+FLUTTERWAVE_SECRET_HASH=your_webhook_secret_hash
 
 # Create a test wallet for processor:
 PROCESSOR_WALLET_PRIVATE_KEY=0x...
@@ -203,7 +205,7 @@ The backend will automatically:
 
 1. Detect `SpendInitiated` event from blockchain
 2. Run fraud checks
-3. Execute bank transfer via Wema/Paystack
+3. Execute bank transfer via Paystack/Flutterwave
 4. Call `completeSpend()` on blockchain when bank confirms
 5. USDC released to fee collector
 
@@ -268,7 +270,7 @@ forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
 ### "Webhook signature verification failed"
 
 ```bash
-# Make sure WEMA_SALT_KEY is correct in .env
+# Make sure PAYSTACK_SECRET_KEY / FLUTTERWAVE_SECRET_HASH are correct in .env
 # Test webhook locally:
 curl -X POST http://localhost:3000/webhooks/health
 ```
