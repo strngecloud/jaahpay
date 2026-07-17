@@ -1,6 +1,5 @@
 import { createPublicClient, createWalletClient, custom, http, formatEther, formatUnits, fromHex, encodeFunctionData, parseUnits } from 'viem';
-import { celo } from 'viem/chains';
-import { MINIPAY_CONFIG, SUPPORTED_TOKENS } from './constants';
+import { MINIPAY_CONFIG, SUPPORTED_TOKENS, getViemChain } from './constants';
 import { buildMentoSwapTransaction, getMentoQuote, isMentoPairTradable } from '../mento/mento-swap';
 
 /**
@@ -26,7 +25,7 @@ export async function getStablecoinBalance(
     chainId: number = 42220
 ): Promise<string> {
     const publicClient = createPublicClient({
-        chain: celo,
+        chain: getViemChain(chainId),
         transport: http(),
     });
 
@@ -79,7 +78,7 @@ export async function estimateGasInStablecoin(
     chainId: number = 42220
 ): Promise<string> {
     const publicClient = createPublicClient({
-        chain: celo,
+        chain: getViemChain(chainId),
         transport: http(),
     });
 
@@ -121,7 +120,7 @@ export async function sendStablecoinTransfer(
     if (!window.ethereum) throw new Error('No wallet detected');
 
     const walletClient = createWalletClient({
-        chain: celo,
+        chain: getViemChain(chainId),
         transport: custom(window.ethereum),
     });
 
@@ -175,7 +174,7 @@ export async function checkTransactionStatus(
     chainId: number = 42220
 ): Promise<boolean> {
     const publicClient = createPublicClient({
-        chain: celo,
+        chain: getViemChain(chainId),
         transport: http(),
     });
 
@@ -279,7 +278,7 @@ export async function performSwap(
         );
 
         const walletClient = createWalletClient({
-            chain: celo,
+            chain: getViemChain(chainId),
             transport: custom(window.ethereum),
         });
 
