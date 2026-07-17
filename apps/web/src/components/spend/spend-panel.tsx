@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useReadContract } from "wagmi";
+import { useReadContract, useChainId } from "wagmi";
 import { useBanks } from "@/lib/hooks/use-banks";
 import { ACCOUNT_NUMBER_LENGTH } from "@/lib/spend/constants";
 import { useSpendRecipient } from "@/lib/hooks/use-spend-recipient";
@@ -80,12 +80,17 @@ function SpendPanelContent({
   }, [recipient.accountNumber, onAccountNumberComplete]);
   const recipients = useSpendRecipients(banks);
   const flow = useSpendFlow();
+  const chainId = useChainId();
 
-  // Get USDC balance for review screen
+  // Get USDC balance for review screen (chain-aware: Sepolia vs mainnet USDC)
   const usdcToken = SWAP_TOKENS.find((t) => t.symbol === "USDC");
+  const usdcAddress =
+    chainId === 11142220
+      ? (usdcToken?.addressSepolia ?? usdcToken?.address)
+      : usdcToken?.address;
   const { data: usdcBalanceRaw, isLoading: isLoadingBalance } = useReadContract(
     {
-      address: usdcToken?.address as `0x${string}`,
+      address: usdcAddress as `0x${string}`,
       abi: ERC20_BALANCE_ABI,
       functionName: "balanceOf",
       args: flow.address ? [flow.address] : undefined,
@@ -176,6 +181,7 @@ function SpendPanelContent({
           quote={flow.quote}
           usdcBalance={usdcBalance}
           isLoadingBalance={isLoadingBalance}
+          isConnected={flow.isConnected}
           onConfirm={flow.executeSpend}
           onBack={flow.goBackToAmount}
           isSubmitting={flow.isSubmitting}

@@ -37,7 +37,7 @@ function getUsdcAddress(chainId: number): `0x${string}` {
   const usdc = SWAP_TOKENS.find((t) => t.symbol === "USDC");
   if (!usdc) throw new Error("USDC token not configured");
 
-  if (chainId === 44787) {
+  if (chainId === 11142220) {
     return usdc.addressSepolia as `0x${string}`;
   }
   return usdc.address as `0x${string}`;
@@ -120,7 +120,13 @@ export function useSpendFlow() {
 
   // ── Execute spend ───────────────────────────────────────────────────
   const executeSpend = useCallback(async () => {
-    if (!recipient || !quote || !address || !isConnected) return;
+    if (!recipient || !quote) return;
+    if (!address || !isConnected) {
+      // Shouldn't happen (review shows a Connect button when disconnected),
+      // but never fail silently — surface why nothing is progressing.
+      setFlowError("Connect your wallet to continue.");
+      return;
+    }
 
     setIsSubmitting(true);
     setFlowError(null);

@@ -2,6 +2,7 @@
 
 import { ArrowLeft, AlertCircle, Shield, Info } from "lucide-react";
 import { motion } from "framer-motion";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { cn } from "@/lib/utils";
 import { BankAvatar } from "./bank-avatar";
 import type { SpendRecipient, SpendQuote } from "@/lib/spend/types";
@@ -11,6 +12,7 @@ interface SpendReviewProps {
   quote: SpendQuote;
   usdcBalance: number | null;
   isLoadingBalance: boolean;
+  isConnected: boolean;
   onConfirm: () => void;
   onBack: () => void;
   isSubmitting: boolean;
@@ -21,10 +23,12 @@ export function SpendReview({
   quote,
   usdcBalance,
   isLoadingBalance,
+  isConnected,
   onConfirm,
   onBack,
   isSubmitting,
 }: SpendReviewProps) {
+  const { openConnectModal } = useConnectModal();
   const hasInsufficientBalance =
     usdcBalance !== null && usdcBalance < quote.totalUSDCRequired;
 
@@ -101,7 +105,7 @@ export function SpendReview({
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-1">
             <span className="text-sm text-white/50">Platform Fee</span>
-            <span className="text-xs text-white/30">(0.3%)</span>
+            <span className="text-xs text-white/30">(0.01%)</span>
           </div>
           <span className="text-sm text-white/70">
             {quote.platformFee.toFixed(2)} USDC
@@ -167,6 +171,16 @@ export function SpendReview({
         </p>
       </div>
 
+      {!isConnected ? (
+        <motion.button
+          onClick={() => openConnectModal?.()}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full h-12 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-brand-blue to-brand-green text-white shadow-[0_0_20px_rgba(38,161,123,0.25)]"
+        >
+          Connect Wallet to Continue
+        </motion.button>
+      ) : (
       <motion.button
         onClick={onConfirm}
         disabled={isSubmitting || hasInsufficientBalance || isLoadingBalance}
@@ -211,6 +225,7 @@ export function SpendReview({
           "Confirm & Send"
         )}
       </motion.button>
+      )}
     </div>
   );
 }
