@@ -1,6 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
+  "globalEnv": [
+    "AGENT_DEPLOYER_PRIVATE_KEY",
+    "PRIVATE_KEY",
+    "X402_PAYTO_ADDRESS",
+    "X402_FACILITATOR_API_KEY",
+    "X402_PRICE_ATOMIC",
+    "X402_MAX_PRICE_ATOMIC",
+    "X402_AGENT_PRIVATE_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -20,7 +20,7 @@
   "packageManager": "pnpm@11.1.0",
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=11.0.0"
   },
   "dependencies": {
     "@celo/attribution-tags": "^0.3.0",
