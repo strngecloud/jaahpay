@@ -10,19 +10,20 @@ import { parseUnits, formatUnits } from "viem";
  */
 export function getSpendRouterAddress(chainId: number): `0x${string}` {
   const address =
-    chainId === 44787
-      ? process.env.NEXT_PUBLIC_SPEND_ROUTER_ADDRESS_ALFAJORES
+    chainId === 11142220
+      ? process.env.NEXT_PUBLIC_SPEND_ROUTER_ADDRESS_SEPOLIA ||
+        process.env.NEXT_PUBLIC_SPEND_ROUTER_ADDRESS
       : chainId === 42220
         ? process.env.NEXT_PUBLIC_SPEND_ROUTER_ADDRESS
         : undefined;
 
-  if (chainId !== 42220 && chainId !== 44787) {
+  if (chainId !== 42220 && chainId !== 11142220) {
     throw new Error(`Unsupported chain: ${chainId}`);
   }
   if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
     throw new Error(
       `SpendRouter address not configured for chain ${chainId}. ` +
-        `Set NEXT_PUBLIC_SPEND_ROUTER_ADDRESS(_ALFAJORES).`,
+        `Set NEXT_PUBLIC_SPEND_ROUTER_ADDRESS(_SEPOLIA).`,
     );
   }
   return address as `0x${string}`;
