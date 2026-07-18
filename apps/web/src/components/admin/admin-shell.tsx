@@ -9,6 +9,7 @@ import {
   Bot,
   Coins,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   ServerCog,
   ShieldCheck,
@@ -21,6 +22,7 @@ import { Callout, LoadingBlock, shortAddress } from "./ui";
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/admin/tickets", label: "Support Tickets", icon: LifeBuoy },
   { href: "/admin/fees", label: "Fees & Revenue", icon: Coins },
   { href: "/admin/agent", label: "AI Agent", icon: Sparkles },
   { href: "/admin/bots", label: "Bots & Jobs", icon: Bot },

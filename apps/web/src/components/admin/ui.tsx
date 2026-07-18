@@ -99,6 +99,12 @@ const STATUS_STYLES: Record<string, { dot: string; text: string }> = {
   pending: { dot: "bg-amber-400", text: "text-amber-400" },
   failed: { dot: "bg-red-400", text: "text-red-400" },
   cancelled: { dot: "bg-white/40", text: "text-white/50" },
+  refunded: { dot: "bg-white/40", text: "text-white/50" },
+  // Support ticket statuses
+  open: { dot: "bg-amber-400", text: "text-amber-400" },
+  in_progress: { dot: "bg-brand-blue", text: "text-brand-blue" },
+  resolved: { dot: "bg-brand-green", text: "text-brand-green" },
+  closed: { dot: "bg-white/40", text: "text-white/50" },
 };
 
 export function StatusPill({ status }: { status: string }) {
