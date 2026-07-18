@@ -34,6 +34,7 @@ const PRODUCT_LINKS = [
   { label: "Transactions", href: "/transactions" },
   { label: "How it works", href: "/#how-it-works" },
   { label: "FAQ", href: "/#faq" },
+  { label: "Support", href: "/support" },
 ];
 
 const RESOURCE_LINKS = [
