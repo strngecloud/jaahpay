@@ -98,6 +98,9 @@ export class SpendResponseDto {
     bank: string;
   };
   bankReference?: string;
+  transactionHash?: string;
+  narration?: string;
+  chain?: string;
   createdAt: Date;
   completedAt?: Date;
   errorMessage?: string;
