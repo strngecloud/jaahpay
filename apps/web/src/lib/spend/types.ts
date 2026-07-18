@@ -88,6 +88,9 @@ export interface SpendStatusResponse {
     bank: string;
   };
   bankReference?: string;
+  transactionHash?: string;
+  narration?: string;
+  chain?: string;
   createdAt: string;
   completedAt?: string;
   errorMessage?: string;

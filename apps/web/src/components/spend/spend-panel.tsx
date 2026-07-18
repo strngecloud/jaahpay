@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useReadContract, useChainId } from "wagmi";
+import { buildReceiptFromStatus } from "@/lib/spend/receipt";
 import { useBanks } from "@/lib/hooks/use-banks";
 import { ACCOUNT_NUMBER_LENGTH } from "@/lib/spend/constants";
 import { useSpendRecipient } from "@/lib/hooks/use-spend-recipient";
@@ -109,6 +110,15 @@ function SpendPanelContent({
     flow.handleRecipientConfirmed(recipient.recipient);
   };
 
+  const receiptData = useMemo(() => {
+    if (!flow.spendStatus) return null;
+    return buildReceiptFromStatus(flow.spendStatus, {
+      txHash: flow.txHash,
+      network: chainId === 11142220 ? "CELO SEPOLIA" : "CELO MAINNET",
+      bankName: flow.recipient?.bankName,
+    });
+  }, [flow.spendStatus, flow.txHash, flow.recipient, chainId]);
+
   return (
     <div className="space-y-4">
       {/* Recipient Step */}
@@ -196,6 +206,7 @@ function SpendPanelContent({
           processingStep={flow.processingStep}
           txHash={flow.txHash}
           spendStatus={flow.spendStatus}
+          receipt={receiptData}
           error={flow.flowError}
           onDone={flow.resetFlow}
           onRetry={flow.retryFromReview}
