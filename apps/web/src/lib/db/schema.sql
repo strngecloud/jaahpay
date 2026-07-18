@@ -10,41 +10,23 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Transactions table
+-- Columns match TransactionDb (src/lib/transactions/db.ts) and the
+-- admin /api/admin/transactions route, not the on-ramp/off-ramp shape
+-- this table used before the swap-only refactor.
 CREATE TABLE IF NOT EXISTS transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    type TEXT NOT NULL CHECK (type IN ('on-ramp', 'off-ramp')),
-    provider TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
-    
-    -- Crypto details
-    crypto_amount DECIMAL(36, 18),
-    crypto_currency TEXT,
-    wallet_address TEXT,
-    blockchain_tx_hash TEXT,
-    
-    -- Fiat details
-    fiat_amount DECIMAL(18, 2),
-    fiat_currency TEXT,
-    bank_account_number TEXT,
-    bank_code TEXT,
-    recipient_name TEXT,
-    
-    -- Provider details
-    provider_tx_id TEXT,
-    provider_reference TEXT,
-    provider_fee DECIMAL(18, 2),
-    
-    -- Rates & fees
-    exchange_rate DECIMAL(18, 6),
-    platform_fee DECIMAL(18, 2),
-    
-    -- Metadata
+    id TEXT PRIMARY KEY,
+    user_address TEXT,
+    type TEXT NOT NULL CHECK (type IN ('swap', 'send', 'receive', 'deposit', 'withdrawal')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded')),
+    from_token TEXT,
+    to_token TEXT,
+    from_amount TEXT,
+    to_amount TEXT,
+    platform_fee TEXT,
+    tx_hash TEXT,
     metadata JSONB,
-    error_message TEXT,
-    completed_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Exchange rates cache
@@ -98,10 +80,10 @@ CREATE TABLE IF NOT EXISTS referral_codes (
 );
 
 -- Create indexes
-CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_address ON transactions(user_address);
 CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_transactions_provider_tx_id ON transactions(provider_tx_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_tx_hash ON transactions(tx_hash);
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_user_id ON bank_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_exchange_rates_expires ON exchange_rates(expires_at);
