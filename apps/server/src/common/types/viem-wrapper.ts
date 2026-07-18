@@ -15,10 +15,8 @@ const viemChains = require('viem/chains');
 
 export type WatchContractEventReturnType = () => void;
 
-export const createPublicClient: (config: any) => any =
-  viem.createPublicClient;
-export const createWalletClient: (config: any) => any =
-  viem.createWalletClient;
+export const createPublicClient: (config: any) => any = viem.createPublicClient;
+export const createWalletClient: (config: any) => any = viem.createWalletClient;
 export const http: (url?: string) => any = viem.http;
 export const parseAbiItem: (signature: string) => any = viem.parseAbiItem;
 

@@ -135,9 +135,7 @@ export class TransactionsService {
       }
     }
 
-    const last24h = rows.filter(
-      (r) => now - r.createdAt.getTime() < dayMs,
-    );
+    const last24h = rows.filter((r) => now - r.createdAt.getTime() < dayMs);
 
     return {
       sampled: rows.length,
@@ -147,9 +145,7 @@ export class TransactionsService {
       pending: rows.filter(
         (r) => r.status === 'pending' || r.status === 'processing',
       ).length,
-      successRate: rows.length
-        ? (completed.length / rows.length) * 100
-        : null,
+      successRate: rows.length ? (completed.length / rows.length) * 100 : null,
       totalVolume: completed.reduce((s, r) => s + num(r.toAmount), 0),
       totalFees: completed.reduce((s, r) => s + num(r.platformFee), 0),
       uniqueWallets: new Set(

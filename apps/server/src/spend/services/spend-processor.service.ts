@@ -79,8 +79,7 @@ export class SpendProcessorService {
 
       // Never pay out NGN unless the on-chain escrow actually covers the
       // quoted USDC total for this exact user.
-      const escrowedUsdc =
-        Number(event.usdcAmount) / this.USDC_DECIMALS_FACTOR;
+      const escrowedUsdc = Number(event.usdcAmount) / this.USDC_DECIMALS_FACTOR;
       const expectedTotal = spend.usdcAmount + spend.platformFeeUsdc;
       const userMatches =
         spend.userAddress.toLowerCase() === event.user.toLowerCase();

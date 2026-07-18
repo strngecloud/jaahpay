@@ -13,16 +13,40 @@ export class UserSpendLimitEntity {
   @PrimaryColumn({ type: 'varchar', length: 42 })
   userAddress: string;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, default: 100.0, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 6,
+    default: 100.0,
+    transformer: decimalTransformer,
+  })
   dailyLimitUsdc: number;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, default: 1000.0, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 6,
+    default: 1000.0,
+    transformer: decimalTransformer,
+  })
   monthlyLimitUsdc: number;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, default: 0, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 6,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   dailySpentUsdc: number;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, default: 0, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 6,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   monthlySpentUsdc: number;
 
   @Column({ type: 'date', nullable: true })

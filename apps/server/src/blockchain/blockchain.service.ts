@@ -156,10 +156,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
    * first tick we anchor to the current head and only process events from
    * there forward.
    */
-  private async pollSpendEvents(
-    chain: Chain,
-    contractAddress: `0x${string}`,
-  ) {
+  private async pollSpendEvents(chain: Chain, contractAddress: `0x${string}`) {
     const client = chain === Chain.CELO ? this.celoClient : this.baseClient;
     const getCursor = () =>
       chain === Chain.CELO ? this.celoLastBlock : this.baseLastBlock;
@@ -170,7 +167,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const latest: bigint = await client.getBlockNumber();
-      let cursor = getCursor();
+      const cursor = getCursor();
 
       // First run: anchor to head, don't replay historical events.
       if (cursor === null) {

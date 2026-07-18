@@ -56,10 +56,7 @@ export class BankService implements OnModuleInit {
       this.logger.log(
         'BANK_PRIMARY_PROVIDER=flutterwave: trying Flutterwave before other providers',
       );
-      this.providerPriority = [
-        BankProvider.FLUTTERWAVE,
-        BankProvider.PAYSTACK,
-      ];
+      this.providerPriority = [BankProvider.FLUTTERWAVE, BankProvider.PAYSTACK];
     }
   }
 

@@ -76,10 +76,7 @@ export class TransactionsController {
    * Update a transaction's status/fields (e.g. confirmation tracking).
    */
   @Patch(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateTransactionDto,
-  ) {
+  async update(@Param('id') id: string, @Body() dto: UpdateTransactionDto) {
     const tx = await this.transactionsService.updateTransaction(id, dto);
     if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
     return { success: true, data: tx };
