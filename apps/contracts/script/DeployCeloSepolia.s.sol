@@ -9,8 +9,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 contract DeployCeloSepoliaScript is Script {
     // Circle's official USDC on Celo Sepolia (6 decimals)
-    address private constant USDC_CELO_SEPOLIA =
-        0x01C5C0122039549AD1493B8220cABEdD739BC44E;
+    address private constant USDC_CELO_SEPOLIA = 0x01C5C0122039549AD1493B8220cABEdD739BC44E;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -32,10 +31,7 @@ contract DeployCeloSepoliaScript is Script {
         SpendRouter implementation = new SpendRouter();
         console.log("SpendRouter Implementation:", address(implementation));
 
-        bytes memory initData = abi.encodeCall(
-            SpendRouter.initialize,
-            (deployer, usdcToken, address(feeCollector), 30)
-        );
+        bytes memory initData = abi.encodeCall(SpendRouter.initialize, (deployer, usdcToken, address(feeCollector), 30));
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         console.log("SpendRouter Proxy:", address(proxy));
 
