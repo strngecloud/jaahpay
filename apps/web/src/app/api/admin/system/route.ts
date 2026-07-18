@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/auth";
 import { publicClient, resolveFeeCollector } from "@/lib/admin/chain";
-import { getAdminSupabase } from "@/lib/admin/supabase-admin";
+import { serverAdminFetch } from "@/lib/admin/server";
 import {
   JAHPAY_ROUTER_ADDRESS,
   ERC8004_CONTRACTS,
@@ -47,13 +47,28 @@ async function checkSpendServer() {
   }
 }
 
+async function checkDatabase() {
+  // Reachability of the server DB, proven by a guarded admin query.
+  try {
+    await serverAdminFetch<{ total: number }>("/transactions/admin?limit=1");
+    return { ok: true, configured: true };
+  } catch (error) {
+    return {
+      ok: false,
+      configured: true,
+      error: error instanceof Error ? error.message : "Unreachable",
+    };
+  }
+}
+
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
-  const [rpc, spendServer, feeCollector] = await Promise.all([
+  const [rpc, spendServer, database, feeCollector] = await Promise.all([
     checkRpc(),
     checkSpendServer(),
+    checkDatabase(),
     resolveFeeCollector().catch(() => null),
   ]);
 
@@ -61,11 +76,7 @@ export async function GET(req: NextRequest) {
     services: {
       rpc: { ...rpc, url: process.env.ARB_RPC_URL || "https://forno.celo.org" },
       spendServer: { ...spendServer, url: process.env.NEXT_PUBLIC_SPEND_API_URL || null },
-      supabase: {
-        ok: !!getAdminSupabase(),
-        configured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        serviceRole: !!(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
-      },
+      database: { ...database, url: process.env.NEXT_PUBLIC_SPEND_API_URL || null },
       sentry: {
         configured: !!(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN),
         enabled: process.env.NEXT_PUBLIC_SENTRY_ENABLED === "true",

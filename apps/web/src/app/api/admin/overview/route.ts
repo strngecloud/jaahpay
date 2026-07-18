@@ -1,101 +1,96 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/auth";
-import { getAdminSupabase } from "@/lib/admin/supabase-admin";
+import { serverAdminFetch } from "@/lib/admin/server";
 import { getFeeCollectorReport, publicClient } from "@/lib/admin/chain";
 
 export const runtime = "nodejs";
 
-interface TxRow {
+interface ServerTx {
   id: string;
-  user_address?: string;
+  userAddress?: string | null;
   type: string;
   status: string;
-  from_token?: string;
-  to_token?: string;
-  from_amount: string;
-  to_amount: string;
-  platform_fee?: string;
-  tx_hash?: string;
-  created_at: string;
+  fromToken?: string | null;
+  toToken?: string | null;
+  fromAmount?: string | null;
+  toAmount?: string | null;
+  platformFee?: string | null;
+  txHash?: string | null;
+  createdAt: string;
 }
 
-const DAYS = 30;
+interface ServerStats {
+  sampled: number;
+  totalTransactions: number;
+  completed: number;
+  failed: number;
+  pending: number;
+  successRate: number | null;
+  totalVolume: number;
+  totalFees: number;
+  uniqueWallets: number;
+  txLast24h: number;
+  volumeLast24h: number;
+  daily: { date: string; volume: number; count: number }[];
+  recent: ServerTx[];
+}
+
+function toRow(t: ServerTx) {
+  return {
+    id: t.id,
+    user_address: t.userAddress ?? undefined,
+    type: t.type,
+    status: t.status,
+    from_token: t.fromToken ?? undefined,
+    to_token: t.toToken ?? undefined,
+    from_amount: t.fromAmount ?? "",
+    to_amount: t.toAmount ?? "",
+    platform_fee: t.platformFee ?? undefined,
+    tx_hash: t.txHash ?? undefined,
+    created_at: t.createdAt,
+  };
+}
 
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
-  const supabase = getAdminSupabase();
-
-  const [dbResult, feeReport, blockNumber] = await Promise.all([
-    supabase
-      ? supabase
-          .from("transactions")
-          .select(
-            "id, user_address, type, status, from_token, to_token, from_amount, to_amount, platform_fee, tx_hash, created_at",
-          )
-          .order("created_at", { ascending: false })
-          .limit(2000)
-      : Promise.resolve(null),
+  const [statsResult, ticketsResult, feeReport, blockNumber] = await Promise.all([
+    serverAdminFetch<ServerStats>("/transactions/admin/stats").catch(
+      (e) => ({ error: e instanceof Error ? e.message : "unreachable" }) as { error: string },
+    ),
+    serverAdminFetch<{ total: number; openCount: number }>(
+      "/support/admin/tickets?limit=1",
+    ).catch(() => null),
     getFeeCollectorReport().catch(() => ({ feeCollector: null, owner: null, tokens: [] })),
     publicClient.getBlockNumber().catch(() => null),
   ]);
 
-  const rows: TxRow[] = (dbResult?.data as TxRow[] | null) || [];
-  const dbError = dbResult?.error?.message || null;
-
-  const num = (v: string | undefined) => {
-    const n = parseFloat(v || "0");
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  const completed = rows.filter((r) => r.status === "completed");
-  const totalVolume = completed.reduce((sum, r) => sum + num(r.to_amount), 0);
-  const totalFees = completed.reduce((sum, r) => sum + num(r.platform_fee), 0);
-  const uniqueWallets = new Set(rows.map((r) => r.user_address?.toLowerCase()).filter(Boolean))
-    .size;
-
-  const dayMs = 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const last24h = rows.filter((r) => now - new Date(r.created_at).getTime() < dayMs);
-
-  // Daily volume for the last 30 days (completed swaps, USD-equivalent amounts)
-  const daily: { date: string; volume: number; count: number }[] = [];
-  for (let i = DAYS - 1; i >= 0; i--) {
-    const dayStart = new Date(now - i * dayMs).toISOString().slice(0, 10);
-    daily.push({ date: dayStart, volume: 0, count: 0 });
-  }
-  const dailyByDate = new Map(daily.map((d) => [d.date, d]));
-  for (const r of completed) {
-    const bucket = dailyByDate.get(r.created_at.slice(0, 10));
-    if (bucket) {
-      bucket.volume += num(r.to_amount);
-      bucket.count += 1;
-    }
-  }
+  const stats = "error" in statsResult ? null : statsResult;
+  const dbError = "error" in statsResult ? statsResult.error : null;
 
   return NextResponse.json({
     database: {
-      configured: !!supabase,
+      configured: !!stats,
       error: dbError,
-      sampled: rows.length,
+      sampled: stats?.sampled ?? 0,
     },
     kpis: {
-      totalTransactions: rows.length,
-      completed: completed.length,
-      failed: rows.filter((r) => r.status === "failed").length,
-      pending: rows.filter((r) => r.status === "pending" || r.status === "processing").length,
-      successRate: rows.length ? (completed.length / rows.length) * 100 : null,
-      totalVolume,
-      totalFees,
-      uniqueWallets,
-      txLast24h: last24h.length,
-      volumeLast24h: last24h
-        .filter((r) => r.status === "completed")
-        .reduce((sum, r) => sum + num(r.to_amount), 0),
+      totalTransactions: stats?.totalTransactions ?? 0,
+      completed: stats?.completed ?? 0,
+      failed: stats?.failed ?? 0,
+      pending: stats?.pending ?? 0,
+      successRate: stats?.successRate ?? null,
+      totalVolume: stats?.totalVolume ?? 0,
+      totalFees: stats?.totalFees ?? 0,
+      uniqueWallets: stats?.uniqueWallets ?? 0,
+      txLast24h: stats?.txLast24h ?? 0,
+      volumeLast24h: stats?.volumeLast24h ?? 0,
+      openTickets: ticketsResult?.openCount ?? 0,
+      totalTickets: ticketsResult?.total ?? 0,
     },
-    daily,
-    recent: rows.slice(0, 8),
+    daily: stats?.daily ?? [],
+    recent: (stats?.recent ?? []).map(toRow).slice(0, 8),
     chain: {
       blockNumber: blockNumber?.toString() || null,
       feeCollector: feeReport.feeCollector,

@@ -21,7 +21,7 @@ interface SystemResponse {
       url: string | null;
       error?: string;
     };
-    supabase: { ok: boolean; configured: boolean; serviceRole: boolean };
+    database: { ok: boolean; configured: boolean; url: string | null; error?: string };
     sentry: { configured: boolean; enabled: boolean };
   };
   agent: { id: string | null; registered: boolean; chainId: number };
@@ -105,12 +105,14 @@ export default function AdminSystemPage() {
           </li>
           <li className="flex flex-wrap items-center justify-between gap-2 py-3">
             <div>
-              <p className="text-sm text-white">Supabase</p>
+              <p className="text-sm text-white">Database</p>
               <p className="font-mono text-xs text-white/40">
-                {services.supabase.serviceRole ? "service-role key" : "publishable key"}
+                {services.database.ok
+                  ? "Postgres via server"
+                  : services.database.error || "unreachable"}
               </p>
             </div>
-            <OkPill ok={services.supabase.ok} labels={["connected", "not configured"]} />
+            <OkPill ok={services.database.ok} labels={["connected", "unreachable"]} />
           </li>
           <li className="flex flex-wrap items-center justify-between gap-2 py-3">
             <div>
