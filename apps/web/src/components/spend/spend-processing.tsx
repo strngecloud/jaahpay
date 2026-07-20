@@ -74,6 +74,10 @@ export function SpendProcessing({
     stepId: ProcessingSubStep,
   ): "complete" | "active" | "pending" | "error" => {
     if (isError && stepId === processingStep) return "error";
+    // Once the flow is done, every step is done — including the final one,
+    // which equals processingStep ("complete") and would otherwise stay stuck
+    // on its "active" spinner instead of turning green.
+    if (isComplete) return "complete";
     if (stepId === processingStep) return "active";
 
     const currentIndex = PROCESS_STEPS.findIndex(
