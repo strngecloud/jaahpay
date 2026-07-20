@@ -1,3 +1,16 @@
+import { setDefaultResultOrder } from 'dns';
+import { setDefaultAutoSelectFamily } from 'net';
+
+// This environment's IPv6 route is dead (DNS returns a NAT64 address that
+// times out). Node's Happy Eyeballs (RFC 8305) races the IPv4 and IPv6
+// connection attempts together, and the dead IPv6 attempt drags the whole
+// race down, so even the working IPv4 leg times out — every outbound
+// fetch/axios call (RPC polling, bank logo lookups, provider APIs) fails
+// with a generic "fetch failed" / AggregateError. Must run before any
+// other import that might open a connection at module-init time.
+setDefaultResultOrder('ipv4first');
+setDefaultAutoSelectFamily(false);
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
