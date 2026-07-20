@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useFilteredTransactions } from "@/contexts/transactions-context";
+import {
+  useTransactions,
+  applyTransactionFilters,
+} from "@/contexts/transactions-context";
+import { useSpendTransactions } from "@/lib/hooks/use-spend-transactions";
 import {
   Transaction,
   TransactionStatus,
@@ -28,6 +33,8 @@ import {
   XCircle,
   Loader2,
   Inbox,
+  Receipt,
+  ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -87,9 +94,39 @@ interface TransactionListProps {
   className?: string;
 }
 
+/** Spend transactions carry a `spend-<id>` id and have a receipt page. */
+const SPEND_ID_PREFIX = "spend-";
+
 function TransactionCard({ tx }: { tx: Transaction }) {
+  const router = useRouter();
+  const isSpend = tx.id.startsWith(SPEND_ID_PREFIX);
+  const spendId = isSpend ? tx.id.slice(SPEND_ID_PREFIX.length) : null;
+
+  const openReceipt = () => {
+    if (spendId) router.push(`/receipt/${encodeURIComponent(spendId)}`);
+  };
+
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
+    <Card
+      className={cn(
+        "overflow-hidden transition-all hover:shadow-md",
+        isSpend &&
+          "cursor-pointer hover:ring-1 hover:ring-brand-blue/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-blue/60",
+      )}
+      {...(isSpend
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick: openReceipt,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openReceipt();
+              }
+            },
+          }
+        : {})}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
         <div className="flex items-center space-x-3">
           <div
@@ -140,16 +177,28 @@ function TransactionCard({ tx }: { tx: Transaction }) {
             )}
           </div>
         </div>
-        {tx.metadata.txHash && (
-          <a
-            href={`https://celoscan.io/tx/${tx.metadata.txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-brand-blue/70 hover:text-brand-blue mt-2 inline-block font-mono"
-          >
-            {tx.metadata.txHash.slice(0, 16)}...
-          </a>
-        )}
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {tx.metadata.txHash ? (
+            <a
+              href={`https://celoscan.io/tx/${tx.metadata.txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[10px] text-brand-blue/70 hover:text-brand-blue inline-block font-mono"
+            >
+              {tx.metadata.txHash.slice(0, 16)}...
+            </a>
+          ) : (
+            <span />
+          )}
+          {isSpend && (
+            <span className="flex items-center gap-0.5 text-[11px] text-brand-blue/70">
+              <Receipt className="h-3 w-3" />
+              View receipt
+              <ChevronRight className="h-3 w-3" />
+            </span>
+          )}
+        </div>
       </CardContent>
 
       {tx.status === TransactionStatus.FAILED && (
@@ -188,11 +237,21 @@ export function TransactionList({
     [statusFilter, typeFilter, limit],
   );
 
-  const {
-    transactions = [],
-    isLoading,
-    error,
-  } = useFilteredTransactions(listFilters);
+  // Local (client-side swap) history and server-side spend history are two
+  // separate sources; merge them, dedupe by id, then apply one filter pass so
+  // the limit/sort/filters span both.
+  const { transactions: localTxs, isLoading: localLoading, error } =
+    useTransactions();
+  const { transactions: spendTxs, isLoading: spendLoading } =
+    useSpendTransactions();
+
+  const transactions = useMemo(() => {
+    const byId = new Map<string, Transaction>();
+    for (const tx of [...localTxs, ...spendTxs]) byId.set(tx.id, tx);
+    return applyTransactionFilters(Array.from(byId.values()), listFilters);
+  }, [localTxs, spendTxs, listFilters]);
+
+  const isLoading = localLoading || spendLoading;
 
   if (isLoading) {
     return (
@@ -275,7 +334,7 @@ export function TransactionList({
           <Inbox className="h-10 w-10 text-white/20 mb-3" />
           <p className="text-sm text-white/50">No transactions yet</p>
           <p className="text-xs text-white/30 mt-1">
-            Complete a swap to see your history here
+            Complete a swap or bank transfer to see your history here
           </p>
         </div>
       ) : (
