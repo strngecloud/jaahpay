@@ -8,6 +8,11 @@ import { useExchangeRate } from "./use-exchange-rate";
 import { SWAP_TOKENS } from "@/lib/minipay/constants";
 import { SpendRouterABI } from "@/lib/contracts/spend-router-abi";
 import { getSpendRouterAddress } from "@/lib/contracts/helpers";
+import {
+  categorizeError,
+  isNonceError,
+  toUserFacingMessage,
+} from "@/lib/errors/error-handler";
 import type {
   SpendRecipient,
   SpendFlowStep,
@@ -41,6 +46,40 @@ function getUsdcAddress(chainId: number): `0x${string}` {
     return usdc.addressSepolia as `0x${string}`;
   }
   return usdc.address as `0x${string}`;
+}
+
+type NonceReader = {
+  getTransactionCount: (args: {
+    address: `0x${string}`;
+    blockTag: "pending";
+  }) => Promise<number>;
+};
+
+/**
+ * Submit a wallet write, transparently recovering from a stale-nonce error.
+ *
+ * Injected wallets cache their nonce and sometimes don't register that a
+ * just-confirmed transaction (e.g. the USDC approve) already consumed one, so
+ * the follow-up write goes out with a nonce the chain has seen ("nonce too
+ * low"). On that specific error we read the authoritative pending nonce from
+ * the chain and resubmit once with it pinned. `send` receives the nonce to
+ * use (undefined on the first, wallet-managed attempt).
+ */
+async function sendWithNonceRetry(
+  send: (nonce?: number) => Promise<`0x${string}`>,
+  publicClient: NonceReader,
+  address: `0x${string}`,
+): Promise<`0x${string}`> {
+  try {
+    return await send();
+  } catch (err) {
+    if (!isNonceError(err)) throw err;
+    const nonce = await publicClient.getTransactionCount({
+      address,
+      blockTag: "pending",
+    });
+    return await send(nonce);
+  }
 }
 
 export function useSpendFlow() {
@@ -157,12 +196,18 @@ export function useSpendFlow() {
 
       // 2. Approve USDC transfer to the SpendRouter escrow and wait for it
       // to land before spending the allowance.
-      const approveTxHash = await writeApprove({
-        address: usdcAddress,
-        abi: ERC20_APPROVE_ABI,
-        functionName: "approve",
-        args: [spendRouterAddress, spendAmount],
-      });
+      const approveTxHash = await sendWithNonceRetry(
+        (nonce) =>
+          writeApprove({
+            address: usdcAddress,
+            abi: ERC20_APPROVE_ABI,
+            functionName: "approve",
+            args: [spendRouterAddress, spendAmount],
+            ...(nonce !== undefined ? { nonce } : {}),
+          }),
+        publicClient,
+        address,
+      );
       await publicClient.waitForTransactionReceipt({ hash: approveTxHash });
 
       setProcessingStep("sending");
@@ -175,12 +220,22 @@ export function useSpendFlow() {
         ),
       );
 
-      const spendTxHash = await writeInitiateSpend({
-        address: spendRouterAddress,
-        abi: SpendRouterABI,
-        functionName: "initiateSpend",
-        args: [spendAmount, BigInt(Math.round(quote.ngnAmount)), recipientHash],
-      });
+      const spendTxHash = await sendWithNonceRetry(
+        (nonce) =>
+          writeInitiateSpend({
+            address: spendRouterAddress,
+            abi: SpendRouterABI,
+            functionName: "initiateSpend",
+            args: [
+              spendAmount,
+              BigInt(Math.round(quote.ngnAmount)),
+              recipientHash,
+            ],
+            ...(nonce !== undefined ? { nonce } : {}),
+          }),
+        publicClient,
+        address,
+      );
 
       setTxHash(spendTxHash);
 
@@ -222,7 +277,11 @@ export function useSpendFlow() {
             setStep("complete");
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           } else if (status.status === "failed" || status.status === "refunded") {
-            setFlowError(status.errorMessage || "Transfer failed");
+            const base =
+              status.status === "refunded"
+                ? "This transfer was refunded to your wallet."
+                : "The transfer could not be completed. Please try again.";
+            setFlowError(toUserFacingMessage(status.errorMessage, base));
             setProcessingStep("error");
             setStep("error");
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -231,11 +290,9 @@ export function useSpendFlow() {
           // Silently continue polling
         }
       }, 5000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Spend flow error:", err);
-      const message =
-        err?.shortMessage || err?.message || "Transaction failed. Please try again.";
-      setFlowError(message);
+      setFlowError(categorizeError(err).userMessage);
       setProcessingStep("error");
       setStep("error");
     } finally {
