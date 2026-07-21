@@ -26,7 +26,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json(recommendation, {
       headers: { 'Cache-Control': 'no-store' },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to compute recommendation' },
       { status: 500 },

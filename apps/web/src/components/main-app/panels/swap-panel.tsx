@@ -11,12 +11,7 @@ import {
   Zap,
   ChevronDown,
 } from "lucide-react";
-import {
-  getSwapTokenInfo,
-  formatTokenAmount,
-  isValidSwapPair,
-  isCeloPair,
-} from "@/lib/swap/usdc-usdt-swap";
+import { getSwapTokenInfo, formatTokenAmount } from "@/lib/swap/usdc-usdt-swap";
 import type { AgentRecommendation } from "@/lib/agent/erc8004-agent";
 import { PLATFORM_FEE_PERCENT, SWAP_TOKENS } from "@/lib/minipay/constants";
 import { useSwap } from "@/lib/hooks/use-swap";
@@ -280,9 +275,6 @@ function SwapPanelContent({
       swap.setSlippageBps(externalSwapParams.slippageBps);
     }
   }, [externalSwapParams]);
-
-  const fromInfo = getSwapTokenInfo(swap.fromToken);
-  const toInfo = getSwapTokenInfo(swap.toToken);
 
   const handleSwap = async () => {
     onTransactionStart?.();

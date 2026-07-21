@@ -10,7 +10,7 @@ export const runtime = "edge";
  * through the Celo x402 facilitator.
  */
 
-async function handler(_req: NextRequest) {
+async function handler() {
   const analysis = await generatePremiumAnalysis();
   return Response.json({ data: analysis });
 }
