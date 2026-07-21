@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { ThirdwebProvider, useFetchWithPayment } from "thirdweb/react";
 import { createThirdwebClient } from "thirdweb";
-import { cn } from "@/lib/utils";
 
 const clientId = process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID;
 const thirdwebClient = clientId ? createThirdwebClient({ clientId }) : null;
@@ -56,7 +55,11 @@ const SERVICES: PlaygroundService[] = [
     init: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: "100", fromToken: "USDC", chainId: 42220 }),
+      body: JSON.stringify({
+        amount: "100",
+        fromToken: "USDC",
+        chainId: 42220,
+      }),
     },
   },
   {
@@ -110,7 +113,10 @@ function ServiceCard({ service }: { service: PlaygroundService }) {
     setResult(null);
     setReceipt(null);
     try {
-      const res = (await fetchWithPayment(service.url, service.init)) as Response;
+      const res = (await fetchWithPayment(
+        service.url,
+        service.init,
+      )) as Response;
       const json = await res.json();
       if (!res.ok) {
         setError(json?.error || `Request failed (${res.status})`);
@@ -149,7 +155,8 @@ function ServiceCard({ service }: { service: PlaygroundService }) {
       >
         {isPending ? (
           <>
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Paying &amp; fetching…
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Paying &amp;
+            fetching…
           </>
         ) : (
           <>Pay {service.priceUsd} &amp; call</>
@@ -215,11 +222,17 @@ function PlaygroundInner() {
         <footer className="text-center space-y-2 pt-4">
           <p className="text-[11px] text-white/30">
             Agents can integrate directly — machine-readable menu at{" "}
-            <a href="/api/agent/catalog" className="text-purple-400 hover:underline">
+            <a
+              href="/api/agent/catalog"
+              className="text-purple-400 hover:underline"
+            >
               /api/agent/catalog
             </a>{" "}
             and{" "}
-            <a href="/.well-known/x402" className="text-purple-400 hover:underline">
+            <a
+              href="/.well-known/x402"
+              className="text-purple-400 hover:underline"
+            >
               /.well-known/x402
             </a>
           </p>

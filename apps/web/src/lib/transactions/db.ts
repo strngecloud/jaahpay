@@ -1,11 +1,18 @@
 /**
- * Database layer for transactions
- * Syncs with Supabase when available, falls back to localStorage
+ * Database layer for transactions.
+ *
+ * Swap history is persisted in the NestJS server's Postgres (the single source
+ * of truth) via the /transactions API. Previously this talked to Supabase; the
+ * public method shapes are unchanged so callers (transaction service, the
+ * /api/transactions/save route) did not need to change.
  */
 
-import { Transaction, TransactionStatus, TransactionType } from './types';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { Transaction } from './types';
 
+const API_URL =
+    process.env.NEXT_PUBLIC_SPEND_API_URL || 'http://localhost:3001/api/v1';
+
+/** snake_case row shape kept for backwards compatibility with callers. */
 export interface DbTransaction {
     id: string;
     user_address?: string;
@@ -22,177 +29,126 @@ export interface DbTransaction {
     updated_at: string;
 }
 
-export class TransactionDb {
-    private static readonly TABLE = 'transactions';
+/** camelCase entity shape the server returns. */
+interface ServerTransaction {
+    id: string;
+    userAddress?: string | null;
+    type: string;
+    status: string;
+    fromToken?: string | null;
+    toToken?: string | null;
+    fromAmount?: string | null;
+    toAmount?: string | null;
+    platformFee?: string | null;
+    txHash?: string | null;
+    metadata?: Record<string, any> | null;
+    createdAt: string;
+    updatedAt: string;
+}
 
+function toDbTransaction(t: ServerTransaction): DbTransaction {
+    return {
+        id: t.id,
+        user_address: t.userAddress ?? undefined,
+        type: t.type,
+        status: t.status,
+        from_token: t.fromToken ?? undefined,
+        to_token: t.toToken ?? undefined,
+        from_amount: t.fromAmount ?? '',
+        to_amount: t.toAmount ?? '',
+        platform_fee: t.platformFee ?? undefined,
+        tx_hash: t.txHash ?? undefined,
+        metadata: t.metadata ?? {},
+        created_at: t.createdAt,
+        updated_at: t.updatedAt,
+    };
+}
+
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_URL}${path}`, {
+        ...init,
+        headers: { 'Content-Type': 'application/json', ...init?.headers },
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Request failed (${res.status})`);
+    }
+    return res.json();
+}
+
+export class TransactionDb {
     /**
-     * Save transaction to database (Supabase + localStorage)
+     * Save (upsert) a transaction to the server DB. Keyed by tx hash so a
+     * repeat save is idempotent.
      */
     static async saveTransaction(
         tx: Transaction,
         userAddress?: string
     ): Promise<boolean> {
         try {
-            if (!isSupabaseConfigured) {
-                console.log('[TransactionDb] Supabase not configured, skipping remote save');
-                return true;
-            }
-
-            const dbTx: DbTransaction = {
-                id: tx.id,
-                user_address: userAddress,
-                type: tx.type,
-                status: tx.status,
-                from_token: tx.metadata.fromAddress,
-                to_token: tx.metadata.toAddress,
-                from_amount: tx.fromAmount,
-                to_amount: tx.toAmount,
-                platform_fee: tx.fee,
-                tx_hash: tx.metadata.txHash,
-                metadata: tx.metadata,
-                created_at: new Date(tx.createdAt).toISOString(),
-                updated_at: new Date(tx.updatedAt).toISOString(),
-            };
-
-            const { error } = await supabase!
-                .from(this.TABLE)
-                .insert([dbTx]);
-
-            if (error) {
-                console.error('[TransactionDb] Failed to save transaction:', error);
-                return false;
-            }
-
+            await apiFetch('/transactions', {
+                method: 'POST',
+                body: JSON.stringify({
+                    id: tx.id,
+                    userAddress,
+                    type: tx.type,
+                    status: tx.status,
+                    fromToken: tx.metadata.fromAddress,
+                    toToken: tx.metadata.toAddress,
+                    fromAmount: tx.fromAmount,
+                    toAmount: tx.toAmount,
+                    platformFee: tx.fee,
+                    txHash: tx.metadata.txHash,
+                    metadata: tx.metadata,
+                }),
+            });
             console.log('[TransactionDb] Transaction saved:', tx.id);
             return true;
         } catch (error) {
-            console.error('[TransactionDb] Error saving transaction:', error);
+            console.error('[TransactionDb] Failed to save transaction:', error);
             return false;
         }
     }
 
-    /**
-     * Update transaction status in database
-     */
+    /** Update a transaction's status/fields on the server. */
     static async updateTransaction(
         txId: string,
         updates: Partial<DbTransaction>
     ): Promise<boolean> {
         try {
-            if (!isSupabaseConfigured) {
-                console.log('[TransactionDb] Supabase not configured, skipping remote update');
-                return true;
-            }
-
-            const { error } = await supabase!
-                .from(this.TABLE)
-                .update({
-                    ...updates,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', txId);
-
-            if (error) {
-                console.error('[TransactionDb] Failed to update transaction:', error);
-                return false;
-            }
-
+            await apiFetch(`/transactions/${encodeURIComponent(txId)}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    status: updates.status,
+                    txHash: updates.tx_hash,
+                    toAmount: updates.to_amount,
+                    platformFee: updates.platform_fee,
+                    metadata: updates.metadata,
+                }),
+            });
             console.log('[TransactionDb] Transaction updated:', txId);
             return true;
         } catch (error) {
-            console.error('[TransactionDb] Error updating transaction:', error);
+            console.error('[TransactionDb] Failed to update transaction:', error);
             return false;
         }
     }
 
-    /**
-     * Fetch user's transactions from database
-     */
+    /** Fetch a user's transactions from the server DB. */
     static async fetchUserTransactions(
         userAddress: string,
         limit: number = 50
     ): Promise<DbTransaction[]> {
         try {
-            if (!isSupabaseConfigured) {
-                console.log('[TransactionDb] Supabase not configured, skipping remote fetch');
-                return [];
-            }
-
-            const { data, error } = await supabase!
-                .from(this.TABLE)
-                .select('*')
-                .eq('user_address', userAddress)
-                .order('created_at', { ascending: false })
-                .limit(limit);
-
-            if (error) {
-                console.error('[TransactionDb] Failed to fetch transactions:', error);
-                return [];
-            }
-
-            return data || [];
+            const res = await apiFetch<{ transactions: ServerTransaction[] }>(
+                `/transactions?userAddress=${encodeURIComponent(
+                    userAddress
+                )}&limit=${limit}`
+            );
+            return (res.transactions || []).map(toDbTransaction);
         } catch (error) {
-            console.error('[TransactionDb] Error fetching transactions:', error);
+            console.error('[TransactionDb] Failed to fetch transactions:', error);
             return [];
-        }
-    }
-
-    /**
-     * Get transaction by hash (for confirmation tracking)
-     */
-    static async getTransactionByHash(txHash: string): Promise<DbTransaction | null> {
-        try {
-            if (!isSupabaseConfigured) {
-                return null;
-            }
-
-            const { data, error } = await supabase!
-                .from(this.TABLE)
-                .select('*')
-                .eq('tx_hash', txHash)
-                .single();
-
-            if (error && error.code !== 'PGRST116') {
-                // PGRST116 = no rows found
-                console.error('[TransactionDb] Failed to fetch transaction by hash:', error);
-            }
-
-            return data || null;
-        } catch (error) {
-            console.error('[TransactionDb] Error fetching transaction by hash:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Get transaction statistics for user
-     */
-    static async getUserStats(userAddress: string) {
-        try {
-            if (!isSupabaseConfigured) {
-                return null;
-            }
-
-            const { data, error } = await supabase!
-                .from(this.TABLE)
-                .select('status, to_amount, to_token')
-                .eq('user_address', userAddress)
-                .eq('status', TransactionStatus.COMPLETED);
-
-            if (error) {
-                console.error('[TransactionDb] Failed to fetch user stats:', error);
-                return null;
-            }
-
-            const stats = {
-                totalSwaps: data?.length || 0,
-                totalVolume: data?.reduce((sum: number, tx: any) => sum + parseFloat(tx.to_amount || '0'), 0) || 0,
-            };
-
-            return stats;
-        } catch (error) {
-            console.error('[TransactionDb] Error fetching user stats:', error);
-            return null;
         }
     }
 }

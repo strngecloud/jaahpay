@@ -9,6 +9,7 @@ import {
   Length,
   Matches,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Chain } from '../types/spend.types';
 
 export class InitiateSpendDto {
@@ -47,11 +48,13 @@ export class GetSpendHistoryDto {
   @IsEthereumAddress()
   userAddress: string;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   @Min(1)
   page?: number = 1;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   @Min(1)
@@ -95,6 +98,9 @@ export class SpendResponseDto {
     bank: string;
   };
   bankReference?: string;
+  transactionHash?: string;
+  narration?: string;
+  chain?: string;
   createdAt: Date;
   completedAt?: Date;
   errorMessage?: string;

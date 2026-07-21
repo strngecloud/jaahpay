@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useReadContract } from "wagmi";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useReadContract, useChainId } from "wagmi";
+import { buildReceiptFromStatus } from "@/lib/spend/receipt";
 import { useBanks } from "@/lib/hooks/use-banks";
 import { ACCOUNT_NUMBER_LENGTH } from "@/lib/spend/constants";
 import { useSpendRecipient } from "@/lib/hooks/use-spend-recipient";
@@ -80,12 +81,17 @@ function SpendPanelContent({
   }, [recipient.accountNumber, onAccountNumberComplete]);
   const recipients = useSpendRecipients(banks);
   const flow = useSpendFlow();
+  const chainId = useChainId();
 
-  // Get USDC balance for review screen
+  // Get USDC balance for review screen (chain-aware: Sepolia vs mainnet USDC)
   const usdcToken = SWAP_TOKENS.find((t) => t.symbol === "USDC");
+  const usdcAddress =
+    chainId === 11142220
+      ? (usdcToken?.addressSepolia ?? usdcToken?.address)
+      : usdcToken?.address;
   const { data: usdcBalanceRaw, isLoading: isLoadingBalance } = useReadContract(
     {
-      address: usdcToken?.address as `0x${string}`,
+      address: usdcAddress as `0x${string}`,
       abi: ERC20_BALANCE_ABI,
       functionName: "balanceOf",
       args: flow.address ? [flow.address] : undefined,
@@ -103,6 +109,15 @@ function SpendPanelContent({
     if (!recipient.recipient) return;
     flow.handleRecipientConfirmed(recipient.recipient);
   };
+
+  const receiptData = useMemo(() => {
+    if (!flow.spendStatus) return null;
+    return buildReceiptFromStatus(flow.spendStatus, {
+      txHash: flow.txHash,
+      network: chainId === 11142220 ? "CELO SEPOLIA" : "CELO MAINNET",
+      bankName: flow.recipient?.bankName,
+    });
+  }, [flow.spendStatus, flow.txHash, flow.recipient, chainId]);
 
   return (
     <div className="space-y-4">
@@ -176,6 +191,7 @@ function SpendPanelContent({
           quote={flow.quote}
           usdcBalance={usdcBalance}
           isLoadingBalance={isLoadingBalance}
+          isConnected={flow.isConnected}
           onConfirm={flow.executeSpend}
           onBack={flow.goBackToAmount}
           isSubmitting={flow.isSubmitting}
@@ -190,6 +206,7 @@ function SpendPanelContent({
           processingStep={flow.processingStep}
           txHash={flow.txHash}
           spendStatus={flow.spendStatus}
+          receipt={receiptData}
           error={flow.flowError}
           onDone={flow.resetFlow}
           onRetry={flow.retryFromReview}

@@ -20,7 +20,12 @@
  *   X402_AGENT_PRIVATE_KEY  payer wallet key (falls back to PRIVATE_KEY);
  *                           needs a little USDC — each call costs ≤ $0.001
  *   X402_TARGET_URL         API origin to buy from (default https://jahpay.xyz)
- *   X402_AGENT_POLL_MS      ms between purchases (default 60000)
+ *   X402_AGENT_POLL_MS      ms between purchases per worker (default 60000)
+ *   X402_AGENT_WORKERS      parallel purchase loops, 1-8 (default 1). Safe to
+ *                           parallelize: payments use random EIP-3009 nonces
+ *                           and the facilitator relays the txs, so workers
+ *                           never contend on an account nonce. Ignored when
+ *                           X402_AGENT_ONCE=1.
  *   X402_MAX_PRICE_ATOMIC   refuse offers above this many USDC atomic units
  *                           (default 10000 = $0.01) — safety cap
  */
@@ -41,6 +46,9 @@ const TARGET = (process.env.X402_TARGET_URL || 'https://jahpay.xyz').replace(/\/
 const POLL_MS = Number(process.env.X402_AGENT_POLL_MS || 60_000);
 const MAX_PRICE = BigInt(process.env.X402_MAX_PRICE_ATOMIC || '10000'); // $0.01
 const ONCE = process.env.X402_AGENT_ONCE === '1';
+const WORKERS = ONCE
+  ? 1
+  : Math.max(1, Math.min(8, Number(process.env.X402_AGENT_WORKERS || 1) || 1));
 
 const key = process.env.X402_AGENT_PRIVATE_KEY || process.env.PRIVATE_KEY;
 if (!key) {
@@ -136,12 +144,12 @@ async function buildPaymentHeader(req: PaymentRequirements): Promise<string> {
   return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
-/** Buy one service: request → 402 offer → pay → receipt. */
-async function buy(label: string, url: string, init: RequestInit): Promise<void> {
+/** Buy one service: request → 402 offer → pay → receipt. Returns true when the receipt shows a settled tx. */
+async function buy(label: string, url: string, init: RequestInit): Promise<boolean> {
   const first = await fetch(url, init);
   if (first.status !== 402) {
     console.log(`  ${label}: expected 402, got ${first.status} — skipping (free or broken?)`);
-    return;
+    return false;
   }
   const offer = (await first.json()) as { accepts?: PaymentRequirements[] };
   const req = offer.accepts?.[0];
@@ -181,6 +189,7 @@ async function buy(label: string, url: string, init: RequestInit): Promise<void>
   console.log(
     `  ${label}: paid $${Number(req.maxAmountRequired) / 1e6} — ${receiptNote}\n    bought: ${preview}…`
   );
+  return receiptNote.startsWith('settled tx');
 }
 
 /**
@@ -215,17 +224,29 @@ async function debugSettle(): Promise<void> {
 }
 
 let cycle = 0;
-async function run(): Promise<void> {
-  if (process.env.X402_DEBUG_SETTLE === '1') return debugSettle();
-  console.log(`x402 consumer agent | payer ${account.address} | target ${TARGET}`);
-  console.log(`price cap $${Number(MAX_PRICE) / 1e6}/call | interval ${POLL_MS}ms\n`);
+let settled = 0;
+const startedAt = Date.now();
+
+async function workerLoop(id: number): Promise<void> {
+  // Stagger worker start times so requests spread across the poll window
+  // instead of arriving in bursts.
+  if (id > 0) await new Promise((r) => setTimeout(r, (POLL_MS / WORKERS) * id));
 
   for (;;) {
     const item = SHOPPING_LIST[cycle % SHOPPING_LIST.length];
     cycle++;
-    console.log(`[${new Date().toISOString()}] cycle ${cycle}`);
+    const n = cycle;
+    console.log(`[${new Date().toISOString()}] cycle ${n}${WORKERS > 1 ? ` (w${id})` : ''}`);
     try {
-      await buy(item.label, `${TARGET}${item.path}`, item.init);
+      if (await buy(item.label, `${TARGET}${item.path}`, item.init)) {
+        settled++;
+        if (settled % 25 === 0) {
+          const perHour = settled / ((Date.now() - startedAt) / 3_600_000);
+          console.log(
+            `  ── progress: ${settled} settled this run | ~${Math.round(perHour)}/hr`
+          );
+        }
+      }
     } catch (err) {
       console.error(`  error: ${(err as Error).message}`);
     }
@@ -233,6 +254,15 @@ async function run(): Promise<void> {
     if (ONCE) continue;
     await new Promise((r) => setTimeout(r, POLL_MS));
   }
+}
+
+async function run(): Promise<void> {
+  if (process.env.X402_DEBUG_SETTLE === '1') return debugSettle();
+  console.log(`x402 consumer agent | payer ${account.address} | target ${TARGET}`);
+  console.log(
+    `price cap $${Number(MAX_PRICE) / 1e6}/call | interval ${POLL_MS}ms | workers ${WORKERS}\n`
+  );
+  await Promise.all(Array.from({ length: WORKERS }, (_, i) => workerLoop(i)));
 }
 
 run().catch((err) => {

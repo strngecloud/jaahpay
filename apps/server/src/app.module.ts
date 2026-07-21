@@ -9,6 +9,8 @@ import { ExchangeRateModule } from './exchange-rate/exchange-rate.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { FraudModule } from './fraud/fraud.module';
+import { SupportModule } from './support/support.module';
+import { TransactionsModule } from './transactions/transactions.module';
 import { RedisModule } from './redis/redis.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -18,6 +20,9 @@ import { BankApiLogEntity } from './database/entities/bank-api-log.entity';
 import { UserSpendLimitEntity } from './database/entities/user-spend-limit.entity';
 import { WebhookLogEntity } from './database/entities/webhook-log.entity';
 import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
+import { SupportTicketEntity } from './database/entities/support-ticket.entity';
+import { TransactionEntity } from './database/entities/transaction.entity';
+import { SnakeNamingStrategy } from './database/snake-naming.strategy';
 
 @Module({
   imports: [
@@ -44,7 +49,10 @@ import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
           UserSpendLimitEntity,
           WebhookLogEntity,
           LedgerEntryEntity,
+          SupportTicketEntity,
+          TransactionEntity,
         ],
+        namingStrategy: new SnakeNamingStrategy(),
         synchronize: configService.get('DATABASE_SYNCHRONIZE') === 'true',
         logging: configService.get('DATABASE_LOGGING') === 'true',
       }),
@@ -63,6 +71,8 @@ import { LedgerEntryEntity } from './database/entities/ledger-entry.entity';
     BlockchainModule,
     WebhooksModule,
     FraudModule,
+    SupportModule,
+    TransactionsModule,
   ],
   controllers: [HealthController],
   providers: [

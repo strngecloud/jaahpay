@@ -12,7 +12,6 @@ import {
   createWalletClient,
   http,
   parseAbiItem,
-  WatchContractEventReturnType,
   celo,
   celoSepolia,
   base,
@@ -22,6 +21,7 @@ import {
 import { Chain, SpendInitiatedEvent } from '../common/types/spend.types';
 import { SpendProcessorService } from '../spend/services/spend-processor.service';
 import { SPEND_ROUTER_ABI } from '../common/abis/spend-router.abi';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class BlockchainService implements OnModuleInit, OnModuleDestroy {
@@ -31,8 +31,31 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   private celoWalletClient: any;
   private baseWalletClient: any;
   private processorAccount: any;
-  private unwatchCelo: WatchContractEventReturnType | null = null;
-  private unwatchBase: WatchContractEventReturnType | null = null;
+
+  // Poll cadence + last processed block per chain. We poll getLogs instead of
+  // using installed eth_newFilter filters because the public forno / base.org
+  // RPCs are load-balanced and lose filter state between requests (each
+  // eth_getFilterChanges may hit a node that never saw the eth_newFilter),
+  // which floods the logs with "filter not found" InvalidParamsRpcError.
+  private readonly POLL_INTERVAL_MS = 4000;
+  // Cap each poll's getLogs range so that catching up after downtime doesn't
+  // blow past a public RPC's max-block-range limit and get stuck retrying
+  // the same oversized query forever.
+  private readonly MAX_BLOCK_RANGE_PER_POLL = 2000n;
+  private celoPollTimer: NodeJS.Timeout | null = null;
+  private basePollTimer: NodeJS.Timeout | null = null;
+  private celoLastBlock: bigint | null = null;
+  private baseLastBlock: bigint | null = null;
+  // Guards against overlapping ticks: markProcessing/completeSpend inside
+  // handleSpendInitiated wait for on-chain confirmations, which routinely
+  // takes longer than POLL_INTERVAL_MS. setInterval fires on a fixed clock
+  // regardless of whether the previous tick finished, so without this a
+  // still-unprocessed event (cursor not yet advanced) gets picked up again
+  // by the next tick and processed a second time concurrently — both calls
+  // race the processor wallet's nonce and one reverts (stale nonce, or
+  // SpendAlreadyProcessed if the first call already landed).
+  private celoPolling = false;
+  private basePolling = false;
 
   // Event definitions must match SpendRouter.sol exactly (including
   // recipientHash) or the log topic hash will never match and the
@@ -45,6 +68,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => SpendProcessorService))
     private readonly spendProcessor: SpendProcessorService,
+    private readonly redisService: RedisService,
   ) {
     const celoRpcUrl = this.configService.get<string>('CELO_RPC_URL');
     const baseRpcUrl = this.configService.get<string>('BASE_RPC_URL');
@@ -71,20 +95,11 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     const celoChain = nodeEnv === 'production' ? celo : celoSepolia;
     const baseChain = nodeEnv === 'production' ? base : baseSepolia;
 
-    // Public RPCs (forno, sepolia.base.org) are load-balanced and lose
-    // eth_newFilter state between requests, so eth_getFilterChanges fails
-    // with "filter not found". Throwing here makes viem's watchers fall
-    // back to plain getLogs polling instead of installed filters.
-    const disableEventFilters = () => ({
-      createContractEventFilter: () =>
-        Promise.reject(new Error('Event filters disabled: RPC is load-balanced')),
-    });
-
     // Setup Celo clients
     this.celoClient = createPublicClient({
       chain: celoChain,
       transport: http(celoRpcUrl),
-    }).extend(disableEventFilters);
+    });
 
     if (this.processorAccount) {
       this.celoWalletClient = createWalletClient({
@@ -98,7 +113,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     this.baseClient = createPublicClient({
       chain: baseChain,
       transport: http(baseRpcUrl),
-    }).extend(disableEventFilters);
+    });
 
     if (this.processorAccount) {
       this.baseWalletClient = createWalletClient({
@@ -109,9 +124,52 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  onModuleInit() {
+  async onModuleInit() {
     this.logger.log('Initializing blockchain event listeners...');
+    await this.loadPersistedCursors();
     this.startEventListeners();
+  }
+
+  private cursorKey(chain: Chain): string {
+    return `blockchain:cursor:${chain}`;
+  }
+
+  /**
+   * Resume each poller from the last block it actually processed. Without
+   * this, a restart falls through to pollSpendEvents' first-tick behavior
+   * of anchoring to the current head, silently skipping any SpendInitiated
+   * events that were mined but not yet processed before the restart —
+   * their bank transfer never fires and the spend is stuck until the
+   * 15-minute PENDING timeout refunds it.
+   */
+  private async loadPersistedCursors(): Promise<void> {
+    try {
+      const celo = await this.redisService.get(this.cursorKey(Chain.CELO));
+      if (celo) {
+        this.celoLastBlock = BigInt(celo);
+        this.logger.log(`Resuming Celo event poller from block ${celo}`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to load persisted Celo poll cursor:', error);
+    }
+
+    try {
+      const base = await this.redisService.get(this.cursorKey(Chain.BASE));
+      if (base) {
+        this.baseLastBlock = BigInt(base);
+        this.logger.log(`Resuming Base event poller from block ${base}`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to load persisted Base poll cursor:', error);
+    }
+  }
+
+  private async persistCursor(chain: Chain, block: bigint): Promise<void> {
+    try {
+      await this.redisService.set(this.cursorKey(chain), block.toString());
+    } catch (error) {
+      this.logger.error(`Failed to persist ${chain} poll cursor:`, error);
+    }
   }
 
   private startEventListeners() {
@@ -138,39 +196,83 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   }
 
   private startCeloListener(contractAddress: `0x${string}`) {
-    this.logger.log(`Starting Celo event listener at ${contractAddress}`);
-
-    this.unwatchCelo = this.celoClient.watchContractEvent({
-      address: contractAddress,
-      abi: [this.SPEND_INITIATED_EVENT],
-      eventName: 'SpendInitiated',
-      onLogs: async (logs: any[]) => {
-        for (const log of logs) {
-          await this.handleSpendInitiated(log, Chain.CELO);
-        }
-      },
-      onError: (error: Error) => {
-        this.logger.error('Celo event listener error:', error);
-      },
-    });
+    this.logger.log(`Starting Celo event poller at ${contractAddress}`);
+    this.celoPollTimer = setInterval(() => {
+      void this.pollSpendEvents(Chain.CELO, contractAddress);
+    }, this.POLL_INTERVAL_MS);
   }
 
   private startBaseListener(contractAddress: `0x${string}`) {
-    this.logger.log(`Starting Base event listener at ${contractAddress}`);
+    this.logger.log(`Starting Base event poller at ${contractAddress}`);
+    this.basePollTimer = setInterval(() => {
+      void this.pollSpendEvents(Chain.BASE, contractAddress);
+    }, this.POLL_INTERVAL_MS);
+  }
 
-    this.unwatchBase = this.baseClient.watchContractEvent({
-      address: contractAddress,
-      abi: [this.SPEND_INITIATED_EVENT],
-      eventName: 'SpendInitiated',
-      onLogs: async (logs: any[]) => {
-        for (const log of logs) {
-          await this.handleSpendInitiated(log, Chain.BASE);
-        }
-      },
-      onError: (error: Error) => {
-        this.logger.error('Base event listener error:', error);
-      },
-    });
+  /**
+   * Poll SpendInitiated logs via getLogs (stateless, works on load-balanced
+   * RPCs). Advances a per-chain cursor so each log is processed once. On the
+   * first tick we anchor to the current head and only process events from
+   * there forward.
+   */
+  private async pollSpendEvents(chain: Chain, contractAddress: `0x${string}`) {
+    const isPolling = chain === Chain.CELO ? this.celoPolling : this.basePolling;
+    if (isPolling) return; // previous tick for this chain is still in flight
+
+    if (chain === Chain.CELO) this.celoPolling = true;
+    else this.basePolling = true;
+
+    const client = chain === Chain.CELO ? this.celoClient : this.baseClient;
+    const getCursor = () =>
+      chain === Chain.CELO ? this.celoLastBlock : this.baseLastBlock;
+    const setCursor = async (b: bigint) => {
+      if (chain === Chain.CELO) this.celoLastBlock = b;
+      else this.baseLastBlock = b;
+      await this.persistCursor(chain, b);
+    };
+
+    try {
+      const latest: bigint = await client.getBlockNumber();
+      const cursor = getCursor();
+
+      // First run with no persisted cursor: anchor to head rather than
+      // replaying the contract's full history. Persisted immediately so a
+      // restart before the next tick resumes here instead of re-anchoring
+      // to a later head and skipping whatever was mined in between.
+      if (cursor === null) {
+        await setCursor(latest);
+        return;
+      }
+      if (latest <= cursor) return;
+
+      // Cap the range so catching up after downtime can't exceed the RPC's
+      // max-block-range limit and get stuck retrying the same query forever.
+      const toBlock =
+        latest - cursor > this.MAX_BLOCK_RANGE_PER_POLL
+          ? cursor + this.MAX_BLOCK_RANGE_PER_POLL
+          : latest;
+
+      const logs = await client.getLogs({
+        address: contractAddress,
+        event: this.SPEND_INITIATED_EVENT,
+        fromBlock: cursor + 1n,
+        toBlock,
+      });
+
+      for (const log of logs) {
+        await this.handleSpendInitiated(log, chain);
+      }
+
+      await setCursor(toBlock);
+    } catch (error: any) {
+      this.logger.error(
+        `${chain} event poll error:`,
+        error?.shortMessage || error?.message || error,
+      );
+    } finally {
+      if (chain === Chain.CELO) this.celoPolling = false;
+      else this.basePolling = false;
+    }
   }
 
   private async handleSpendInitiated(log: any, chain: Chain) {
@@ -441,12 +543,14 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy() {
-    this.logger.log('Stopping blockchain event listeners...');
-    if (this.unwatchCelo) {
-      this.unwatchCelo();
+    this.logger.log('Stopping blockchain event pollers...');
+    if (this.celoPollTimer) {
+      clearInterval(this.celoPollTimer);
+      this.celoPollTimer = null;
     }
-    if (this.unwatchBase) {
-      this.unwatchBase();
+    if (this.basePollTimer) {
+      clearInterval(this.basePollTimer);
+      this.basePollTimer = null;
     }
   }
 }

@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Send, Loader2, Sparkles } from "lucide-react";
+import { Bot, Send, Loader2 } from "lucide-react";
 import { useChainId } from "wagmi";
 import { cn } from "@/lib/utils";
 import type { SwapTokenSymbol } from "@/lib/swap/usdc-usdt-swap";
@@ -11,7 +10,11 @@ interface ChatMessage {
   id: string;
   role: "user" | "agent";
   content: string;
-  suggestedActions?: Array<{ label: string; action: string; payload?: Record<string, unknown> }>;
+  suggestedActions?: Array<{
+    label: string;
+    action: string;
+    payload?: Record<string, unknown>;
+  }>;
 }
 
 interface AgentChatProps {
@@ -55,7 +58,10 @@ export function AgentChat({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages]);
 
   const sendMessage = useCallback(
@@ -102,7 +108,8 @@ export function AgentChat({
           {
             id: `e-${Date.now()}`,
             role: "agent",
-            content: "Sorry, I couldn't reach the agent service. Please try again.",
+            content:
+              "Sorry, I couldn't reach the agent service. Please try again.",
           },
         ]);
       } finally {

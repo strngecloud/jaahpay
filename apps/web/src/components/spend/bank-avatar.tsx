@@ -36,7 +36,6 @@ export function BankAvatar({
 
   if (logo && !logoFailed) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={logo}
         alt={name}

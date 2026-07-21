@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 import { SpendEntity } from '../../database/entities/spend.entity';
 import { BankService } from '../../bank/bank.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
@@ -44,9 +44,11 @@ export class SpendProcessorService {
   async processSpendInitiated(event: SpendInitiatedEvent): Promise<void> {
     this.logger.log(`Processing spend initiated: ${event.spendId}`);
 
+    let spend: SpendEntity | null = null;
+
     try {
       // Check if spend already exists (bound earlier via confirm-blockchain)
-      let spend = await this.spendRepo.findOne({
+      spend = await this.spendRepo.findOne({
         where: { spendId: event.spendId },
       });
 
@@ -79,8 +81,7 @@ export class SpendProcessorService {
 
       // Never pay out NGN unless the on-chain escrow actually covers the
       // quoted USDC total for this exact user.
-      const escrowedUsdc =
-        Number(event.usdcAmount) / this.USDC_DECIMALS_FACTOR;
+      const escrowedUsdc = Number(event.usdcAmount) / this.USDC_DECIMALS_FACTOR;
       const expectedTotal = spend.usdcAmount + spend.platformFeeUsdc;
       const userMatches =
         spend.userAddress.toLowerCase() === event.user.toLowerCase();
@@ -125,12 +126,28 @@ export class SpendProcessorService {
         `Error processing spend initiated ${event.spendId}:`,
         error,
       );
+      const message = error instanceof Error ? error.message : 'Unknown error';
 
-      // Mark as failed
-      await this.markSpendAsFailed(
-        event.spendId,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      if (spend) {
+        // The escrow is most likely still Pending/Processing on-chain (e.g.
+        // markProcessing itself failed to broadcast or confirm) — refund it
+        // so the user isn't left with USDC stuck in the contract and no
+        // automatic recovery path. failAndRelease marks the record FAILED,
+        // and SpendTimeoutService only rescues DB-status PENDING records,
+        // so without this the escrow would never be revisited.
+        await this.failAndRelease(spend, message);
+        try {
+          await this.blockchainService.refundSpend(event.spendId, message, event.chain);
+        } catch (refundError) {
+          this.logger.error(
+            `Failed to refund spend ${event.spendId} after processing error ` +
+              `(escrow may need manual recovery, or may already be Completed/Refunded on-chain):`,
+            refundError,
+          );
+        }
+      } else {
+        await this.markSpendAsFailed(event.spendId, message);
+      }
     }
   }
 
@@ -300,8 +317,11 @@ export class SpendProcessorService {
     errorMessage: string,
   ): Promise<void> {
     try {
+      // Never downgrade a record that already reached a terminal success
+      // state — a late/duplicate error handler firing after the spend
+      // already completed must not overwrite it.
       await this.spendRepo.update(
-        { spendId },
+        { spendId, status: Not(In([SpendStatus.COMPLETED, SpendStatus.REFUNDED])) },
         {
           status: SpendStatus.FAILED,
           errorMessage,

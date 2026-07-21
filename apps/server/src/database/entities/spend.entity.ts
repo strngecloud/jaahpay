@@ -30,16 +30,40 @@ export class SpendEntity {
   })
   chain: Chain;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, nullable: false, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 6,
+    nullable: false,
+    transformer: decimalTransformer,
+  })
   usdcAmount: number;
 
-  @Column({ type: 'decimal', precision: 20, scale: 2, nullable: false, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 2,
+    nullable: false,
+    transformer: decimalTransformer,
+  })
   ngnAmount: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: false,
+    transformer: decimalTransformer,
+  })
   exchangeRate: number;
 
-  @Column({ type: 'decimal', precision: 20, scale: 6, nullable: false, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 6,
+    nullable: false,
+    transformer: decimalTransformer,
+  })
   platformFeeUsdc: number;
 
   @Column({ type: 'varchar', length: 10, nullable: false })

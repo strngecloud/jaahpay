@@ -19,13 +19,6 @@ type Toast = {
 
 type ToastOptions = Omit<Toast, 'id'>;
 
-const actionTypes = {
-  ADD_TOAST: 'ADD_TOAST',
-  UPDATE_TOAST: 'UPDATE_TOAST',
-  DISMISS_TOAST: 'DISMISS_TOAST',
-  REMOVE_TOAST: 'REMOVE_TOAST',
-} as const;
-
 let count = 0;
 
 function genId() {
@@ -33,25 +26,23 @@ function genId() {
   return count.toString();
 }
 
-type ActionType = typeof actionTypes;
-
 type Action =
   | {
-      type: ActionType['ADD_TOAST'];
-      toast: Toast;
-    }
+    type: 'ADD_TOAST';
+    toast: Toast;
+  }
   | {
-      type: ActionType['UPDATE_TOAST'];
-      toast: Partial<Toast> & { id: string };
-    }
+    type: 'UPDATE_TOAST';
+    toast: Partial<Toast> & { id: string };
+  }
   | {
-      type: ActionType['DISMISS_TOAST'];
-      toastId?: string;
-    }
+    type: 'DISMISS_TOAST';
+    toastId?: string;
+  }
   | {
-      type: ActionType['REMOVE_TOAST'];
-      toastId?: string;
-    };
+    type: 'REMOVE_TOAST';
+    toastId?: string;
+  };
 
 interface State {
   toasts: Toast[];
@@ -107,9 +98,9 @@ export const reducer = (state: State, action: Action): State => {
         toasts: state.toasts.map((t) =>
           !toastId || t.id === toastId
             ? {
-                ...t,
-                open: false,
-              }
+              ...t,
+              open: false,
+            }
             : t
         ),
       };

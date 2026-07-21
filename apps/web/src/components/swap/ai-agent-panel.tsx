@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Star,
   Lock,
-  Loader2,
   MessageSquare,
 } from "lucide-react";
 import { getAgentReputation } from "@/lib/agent/erc8004-agent";
@@ -23,9 +22,7 @@ import { createThirdwebClient } from "thirdweb";
 import type { SwapTokenSymbol } from "@/lib/swap/usdc-usdt-swap";
 
 const clientId = process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID;
-const thirdwebClient = clientId
-  ? createThirdwebClient({ clientId })
-  : null;
+const thirdwebClient = clientId ? createThirdwebClient({ clientId }) : null;
 
 interface AIAgentPanelProps {
   recommendation: AgentRecommendation | null;
@@ -41,20 +38,33 @@ interface AIAgentPanelProps {
 }
 
 const CONDITION_CONFIG = {
-  optimal: { color: "text-brand-green", dot: "bg-brand-green", label: "Optimal" },
+  optimal: {
+    color: "text-brand-green",
+    dot: "bg-brand-green",
+    label: "Optimal",
+  },
   normal: { color: "text-blue-400", dot: "bg-blue-400", label: "Normal" },
-  volatile: { color: "text-yellow-400", dot: "bg-yellow-400", label: "Volatile" },
+  volatile: {
+    color: "text-yellow-400",
+    dot: "bg-yellow-400",
+    label: "Volatile",
+  },
 };
 
 function PremiumAnalysisBlock() {
   const { fetchWithPayment, isPending } = useFetchWithPayment(thirdwebClient!);
-  const [premiumData, setPremiumData] = useState<Record<string, unknown> | null>(null);
+  const [premiumData, setPremiumData] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [premiumError, setPremiumError] = useState<string | null>(null);
 
   const handlePremiumRequest = async () => {
     setPremiumError(null);
     try {
-      const res = (await fetchWithPayment("/api/agent/premium-analysis")) as Response;
+      const res = (await fetchWithPayment(
+        "/api/agent/premium-analysis",
+      )) as Response;
       const json = await res.json();
       if (json.data) setPremiumData(json.data);
       else setPremiumError("Failed to fetch premium analysis");
@@ -111,7 +121,9 @@ function AIAgentPanelInner({
   const [activeTab, setActiveTab] = useState<"chat" | "insights">("chat");
 
   useEffect(() => {
-    getAgentReputation().then(setReputation).catch(() => {});
+    getAgentReputation()
+      .then(setReputation)
+      .catch(() => {});
   }, []);
 
   const condition = recommendation?.marketCondition ?? "optimal";
@@ -140,7 +152,9 @@ function AIAgentPanelInner({
 
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-white tracking-wide">Jahpay AI Agent</span>
+            <span className="text-sm font-bold text-white tracking-wide">
+              Jahpay AI Agent
+            </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold shadow-[0_0_10px_rgba(168,85,247,0.15)]">
               LIVE
             </span>
@@ -180,7 +194,11 @@ function AIAgentPanelInner({
               {(
                 [
                   { id: "chat" as const, label: "Chat", icon: MessageSquare },
-                  { id: "insights" as const, label: "Insights", icon: TrendingUp },
+                  {
+                    id: "insights" as const,
+                    label: "Insights",
+                    icon: TrendingUp,
+                  },
                 ] as const
               ).map(({ id, label, icon: Icon }) => (
                 <button
@@ -223,7 +241,9 @@ function AIAgentPanelInner({
                           value: `${recommendation.recommendedSlippageBps / 100}%`,
                         },
                         {
-                          icon: <TrendingUp className="w-3 h-3 text-brand-green" />,
+                          icon: (
+                            <TrendingUp className="w-3 h-3 text-brand-green" />
+                          ),
                           label: "Confidence",
                           value: `${recommendation.confidence}%`,
                         },
@@ -238,8 +258,12 @@ function AIAgentPanelInner({
                           className="flex flex-col items-center gap-1 p-2 rounded-xl bg-white/[0.03] border border-white/[0.05]"
                         >
                           {icon}
-                          <span className="text-[10px] text-white/35">{label}</span>
-                          <span className="text-xs font-semibold text-white">{value}</span>
+                          <span className="text-[10px] text-white/35">
+                            {label}
+                          </span>
+                          <span className="text-xs font-semibold text-white">
+                            {value}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -250,7 +274,8 @@ function AIAgentPanelInner({
                       <PremiumAnalysisBlock />
                     ) : (
                       <p className="text-[10px] text-white/40 text-center">
-                        Set NEXT_PUBLIC_THIRDWEB_CLIENT_ID for premium x402 analysis.
+                        Set NEXT_PUBLIC_THIRDWEB_CLIENT_ID for premium x402
+                        analysis.
                       </p>
                     )}
                   </div>

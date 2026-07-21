@@ -5,9 +5,8 @@
 
 import { Mento, ChainId, deadlineFromMinutes } from '@mento-protocol/mento-sdk';
 import { parseUnits, formatUnits, encodeFunctionData, createPublicClient, http, type Address } from 'viem';
-import { celo } from 'viem/chains';
 import { toDataSuffix } from '@celo/attribution-tags';
-import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG, JAHPAY_ROUTER_ADDRESS, CELO_BUILDERS_ATTRIBUTION_TAG } from '../minipay/constants';
+import { SWAP_TOKENS, SUPPORTED_TOKENS, PLATFORM_FEE_BPS, SWAP_CONFIG, JAHPAY_ROUTER_ADDRESS, CELO_BUILDERS_ATTRIBUTION_TAG, getViemChain } from '../minipay/constants';
 import { getUniswapQuote, buildUniswapSwapTransaction } from './uniswap-swap';
 
 const JAHPAY_ROUTER_ABI = [
@@ -282,7 +281,7 @@ export async function buildSwapTransaction(
   } | null = null;
 
   if (fromToken !== 'CELO') {
-    const client = createPublicClient({ chain: celo, transport: http() });
+    const client = createPublicClient({ chain: getViemChain(chainId), transport: http() });
     const currentAllowance = await client.readContract({
       address: fromAddr as Address,
       abi: ERC20_ABI,

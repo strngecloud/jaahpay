@@ -29,6 +29,18 @@ export interface SpendHistoryItem {
     bank: string;
   };
   createdAt: string;
+  // The server's history endpoint returns the full spend DTO (same shape as
+  // SpendStatusResponse), so these are populated in practice — kept optional
+  // for consumers that only need the summary fields above.
+  usdcAmount?: number;
+  exchangeRate?: number;
+  platformFee?: number;
+  bankReference?: string;
+  transactionHash?: string;
+  narration?: string;
+  chain?: string;
+  completedAt?: string;
+  errorMessage?: string;
 }
 
 export type SpendStep = "recipient" | "confirm";
@@ -88,6 +100,9 @@ export interface SpendStatusResponse {
     bank: string;
   };
   bankReference?: string;
+  transactionHash?: string;
+  narration?: string;
+  chain?: string;
   createdAt: string;
   completedAt?: string;
   errorMessage?: string;

@@ -284,6 +284,70 @@ export function useTransactions() {
   return context;
 }
 
+/**
+ * Pure filter/sort/limit over a transaction array. Shared by the context hook
+ * and any caller that needs to merge extra sources (e.g. server-side spends)
+ * before applying the same filtering.
+ */
+export function applyTransactionFilters(
+  transactions: Transaction[],
+  filters: TransactionFilters = {},
+): Transaction[] {
+  let filtered = transactions.filter((tx) => {
+    if (filters.status) {
+      const statuses = Array.isArray(filters.status)
+        ? filters.status
+        : [filters.status];
+      if (!statuses.includes(tx.status)) return false;
+    }
+
+    if (filters.type) {
+      const types = Array.isArray(filters.type) ? filters.type : [filters.type];
+      if (!types.includes(tx.type)) return false;
+    }
+
+    if (filters.startDate && tx.createdAt < filters.startDate) return false;
+    if (filters.endDate && tx.createdAt > filters.endDate) return false;
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      const matchesId = tx.id.toLowerCase().includes(search);
+      const matchesFrom =
+        tx.metadata.fromAddress?.toLowerCase().includes(search) || false;
+      const matchesTo =
+        tx.metadata.toAddress?.toLowerCase().includes(search) || false;
+      const matchesProvider = (tx.provider ?? "Unknown")
+        .toLowerCase()
+        .includes(search);
+
+      if (!(matchesId || matchesFrom || matchesTo || matchesProvider)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const sortBy = filters.sortBy || "createdAt";
+  const sortOrder = filters.sortOrder || "desc";
+
+  filtered = [...filtered].sort((a, b) => {
+    const aValue = sortBy === "createdAt" ? a.createdAt : a.updatedAt;
+    const bValue = sortBy === "createdAt" ? b.createdAt : b.updatedAt;
+    if (sortOrder === "asc") {
+      return aValue > bValue ? 1 : -1;
+    }
+    return aValue < bValue ? 1 : -1;
+  });
+
+  if (filters.limit) {
+    const offset = filters.offset || 0;
+    filtered = filtered.slice(offset, offset + filters.limit);
+  }
+
+  return filtered;
+}
+
 // Custom hook for filtering transactions
 export function useFilteredTransactions(filters: TransactionFilters = {}) {
   const { transactions, isLoading, error } = useTransactions();
@@ -295,74 +359,22 @@ export function useFilteredTransactions(filters: TransactionFilters = {}) {
     ? filters.type.join(",")
     : (filters.type ?? "");
 
-  const filteredTransactions = useMemo(() => {
-    let filtered = transactions.filter((tx) => {
-      if (filters.status) {
-        const statuses = Array.isArray(filters.status)
-          ? filters.status
-          : [filters.status];
-        if (!statuses.includes(tx.status)) return false;
-      }
-
-      if (filters.type) {
-        const types = Array.isArray(filters.type)
-          ? filters.type
-          : [filters.type];
-        if (!types.includes(tx.type)) return false;
-      }
-
-      if (filters.startDate && tx.createdAt < filters.startDate) return false;
-      if (filters.endDate && tx.createdAt > filters.endDate) return false;
-
-      if (filters.search) {
-        const search = filters.search.toLowerCase();
-        const matchesId = tx.id.toLowerCase().includes(search);
-        const matchesFrom =
-          tx.metadata.fromAddress?.toLowerCase().includes(search) || false;
-        const matchesTo =
-          tx.metadata.toAddress?.toLowerCase().includes(search) || false;
-        const matchesProvider = (tx.provider ?? "Unknown")
-          .toLowerCase()
-          .includes(search);
-
-        if (!(matchesId || matchesFrom || matchesTo || matchesProvider)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    const sortBy = filters.sortBy || "createdAt";
-    const sortOrder = filters.sortOrder || "desc";
-
-    filtered = [...filtered].sort((a, b) => {
-      const aValue = sortBy === "createdAt" ? a.createdAt : a.updatedAt;
-      const bValue = sortBy === "createdAt" ? b.createdAt : b.updatedAt;
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      }
-      return aValue < bValue ? 1 : -1;
-    });
-
-    if (filters.limit) {
-      const offset = filters.offset || 0;
-      filtered = filtered.slice(offset, offset + filters.limit);
-    }
-
-    return filtered;
-  }, [
-    transactions,
-    statusKey,
-    typeKey,
-    filters.startDate,
-    filters.endDate,
-    filters.search,
-    filters.sortBy,
-    filters.sortOrder,
-    filters.limit,
-    filters.offset,
-  ]);
+  const filteredTransactions = useMemo(
+    () => applyTransactionFilters(transactions, filters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      transactions,
+      statusKey,
+      typeKey,
+      filters.startDate,
+      filters.endDate,
+      filters.search,
+      filters.sortBy,
+      filters.sortOrder,
+      filters.limit,
+      filters.offset,
+    ],
+  );
 
   return {
     transactions: filteredTransactions,

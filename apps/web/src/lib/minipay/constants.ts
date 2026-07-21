@@ -1,4 +1,17 @@
+import { celo, celoSepolia } from 'viem/chains';
+import type { Chain } from 'viem';
+
 // ─── Celo Chain Configuration ────────────────────────────────────────────────
+
+/**
+ * Resolve the viem chain (with its RPC + multicall config) for a wagmi chainId.
+ * Any non-Sepolia id falls back to Celo mainnet. Use this everywhere a raw
+ * viem client is created so reads/writes hit the network the user is actually
+ * connected to instead of being hardcoded to mainnet.
+ */
+export function getViemChain(chainId?: number): Chain {
+  return chainId === 11142220 ? celoSepolia : celo;
+}
 
 export const DEFAULT_CHAIN = {
   id: 42220,
@@ -28,7 +41,7 @@ export const SWAP_TOKENS = [
     name: 'USD Coin',
     decimals: 6,
     address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',      // Celo Mainnet
-    addressSepolia: '0x2A3684e9Dc20B857375EA04235F2F7edBe818FA7', // Celo Sepolia
+    addressSepolia: '0x01C5C0122039549AD1493B8220cABEdD739BC44E', // Celo Sepolia (Mento)
     color: '#2775CA',
     logo: '/usd-coin-usdc-logo.svg',
     issuer: 'Circle',
@@ -38,7 +51,7 @@ export const SWAP_TOKENS = [
     name: 'Tether USD',
     decimals: 6,
     address: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',      // Celo Mainnet
-    addressSepolia: '0x617f3112bF5ad0E84E882D5142D0aE6C606cc89', // Celo Sepolia
+    addressSepolia: '0xd077A400968890Eacc75cdc901F0356c943e4fDb', // Celo Sepolia (Mento)
     color: '#26A17B',
     logo: '/tether-usdt-logo.svg',
     issuer: 'Tether',
@@ -48,7 +61,7 @@ export const SWAP_TOKENS = [
     name: 'Celo',
     decimals: 18,
     address: '0x471EcE3750Da237f93B8E339c536989b8978a438',      // Celo Mainnet
-    addressSepolia: '0xF194AFDF50bAE0a21EF85469d1521810657a1b53', // Celo Sepolia
+    addressSepolia: '0x471EcE3750Da237f93B8E339c536989b8978a438', // Celo Sepolia (same GoldToken address)
     color: '#FCFF52',
     logo: '/celo-logo.svg',
     issuer: 'Celo',
@@ -61,7 +74,7 @@ export const USDM_TOKEN = {
   name: 'Mento USD',
   decimals: 18,
   address: '0x765DE816845861e75A25fCA122bb6898B8B1282a',
-  addressSepolia: '0x10c892A6ec43a53E45d0B916b4b7D383B1b4F9f9',
+  addressSepolia: '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b', // Celo Sepolia (Mento USDm)
 };
 
 // Keep SUPPORTED_TOKENS for Mento SDK compatibility (includes USDm + CELO for rate API)
@@ -72,11 +85,11 @@ export const SUPPORTED_TOKENS = [
     name: 'Celo',
     decimals: 18,
     address: '0x471EcE3750Da237f93B8E339c536989b8978a438',
-    addressSepolia: '0xF194AFDF50bAE0a21EF85469d1521810657a1b53',
+    addressSepolia: '0x471EcE3750Da237f93B8E339c536989b8978a438',
     logo: '/celo-logo.svg',
   },
-  { symbol: 'USDC', name: 'USD Coin', decimals: 6, address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', addressSepolia: '0x2A3684e9Dc20B857375EA04235F2F7edBe818FA7', logo: '/usd-coin-usdc-logo.svg' },
-  { symbol: 'USDT', name: 'Tether USD', decimals: 6, address: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', addressSepolia: '0x617f3112bF5ad0E84E882D5142D0aE6C606cc89', logo: '/tether-usdt-logo.svg' },
+  { symbol: 'USDC', name: 'USD Coin', decimals: 6, address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', addressSepolia: '0x01C5C0122039549AD1493B8220cABEdD739BC44E', logo: '/usd-coin-usdc-logo.svg' },
+  { symbol: 'USDT', name: 'Tether USD', decimals: 6, address: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', addressSepolia: '0xd077A400968890Eacc75cdc901F0356c943e4fDb', logo: '/tether-usdt-logo.svg' },
 ];
 
 // ─── Platform Fee ────────────────────────────────────────────────────────────
@@ -133,7 +146,7 @@ export const ERC8004_CONTRACTS = {
 
 export const MINIPAY_CONFIG = {
   SUPPORTED_FEE_CURRENCY: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // USDm mainnet
-  SUPPORTED_FEE_CURRENCY_SEPOLIA: '0x10c892A6ec43a53E45d0b916b4b7D383B1b4F9f9',
+  SUPPORTED_FEE_CURRENCY_SEPOLIA: '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b', // USDm Celo Sepolia
   USE_LEGACY_TRANSACTIONS: true,
   MOBILE_FIRST: true,
 };
